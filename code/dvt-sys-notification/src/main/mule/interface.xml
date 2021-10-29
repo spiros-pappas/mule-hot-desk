@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns:json-logger="http://www.mulesoft.org/schema/mule/json-logger"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:api-gateway="http://www.mulesoft.org/schema/mule/api-gateway" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd 
+http://www.mulesoft.org/schema/mule/api-gateway http://www.mulesoft.org/schema/mule/api-gateway/current/mule-api-gateway.xsd
+http://www.mulesoft.org/schema/mule/json-logger http://www.mulesoft.org/schema/mule/json-logger/current/mule-json-logger.xsd">
+    <apikit:config name="dvt-sys-notification-config" api="resource::813cde1d-689b-4689-91c2-c9f408772769:dvt-sys-notification:1.0.0:raml:zip:dvt-sys-notification.raml" outboundHeadersMapName="outboundHeaders" httpStatusVarName="httpStatus" />
+    <flow name="dvt-sys-notification-main">
+        <http:listener config-ref="http-listener-config" path="/*">
+            <http:response statusCode="#[vars.httpStatus default 200]">
+                <http:headers><![CDATA[#[vars.outboundHeaders default {}]]]></http:headers>
+            </http:response>
+            <http:error-response statusCode="#[vars.httpStatus default 500]">
+                <http:body><![CDATA[#[payload]]]></http:body>
+                <http:headers><![CDATA[#[vars.outboundHeaders default {}]]]></http:headers>
+            </http:error-response>
+        </http:listener>
+        <json-logger:logger doc:name="Logger Debug" doc:id="4daf9458-e0db-484e-a44c-111b4057541f" config-ref="json-logger-config" message="DEBUG: Inbound HTTP Request" priority="DEBUG" category="${json.logger.category.debug}" >
+			<json-logger:content ><![CDATA[#[import modules::JSONLoggerModule output application/json ---
+{
+    attributes: JSONLoggerModule::stringifyNonJSON(attributes),
+    payload: JSONLoggerModule::stringifyNonJSON(payload) 
+}]]]></json-logger:content>
+		</json-logger:logger>
+		<ee:transform doc:name="Prepare logMessage" doc:id="9be4aad6-6a6d-410b-b913-2224b5627a3c" >
+			<ee:message />
+			<ee:variables >
+				<ee:set-variable variableName="logMessage" ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	message: "START: Inbound HTTP Request",
+	content: {
+		remoteAddress: message.attributes.remoteAddress,
+		method: message.attributes.method,
+		requestPath: message.attributes.requestPath,
+		headers: {
+			client_id: message.attributes.headers.client_id,
+			client_secret: message.attributes.headers.client_secret
+		},
+		queryParams: message.attributes.queryParams
+	}
+}]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<json-logger:logger doc:name="Logger Start" doc:id="bdecc309-2bfe-46d2-b7b6-6841610301c9" config-ref="json-logger-config" message="#[vars.logMessage.message]" priority='#["${json.logger.priority.start}"]' category="${json.logger.category.start}" >
+			<json-logger:content ><![CDATA[#[output application/json 
+---
+vars.logMessage.content]]]></json-logger:content>
+		</json-logger:logger>
+		<apikit:router config-ref="dvt-sys-notification-config" />
+		<ee:transform doc:name="Update logMessage" doc:id="6828279d-bd50-4577-a935-40cf35243cc5" >
+			<ee:message />
+			<ee:variables >
+				<ee:set-variable variableName="logMessage" ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	message: "END: Outbound HTTP Response",
+	content: {
+		httpStatus: vars.httpStatus
+	}
+}]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<json-logger:logger doc:name="Logger End" doc:id="a1ddad23-641e-4386-9cea-025b57145cb0" config-ref="json-logger-config" message="#[vars.logMessage.message]" tracePoint="END" priority='#["${json.logger.priority.end}"]' category="${json.logger.category.end}" >
+			<json-logger:content ><![CDATA[#[output application/json 
+---
+vars.logMessage.content]]]></json-logger:content>
+		</json-logger:logger>
+		<json-logger:logger doc:name="Logger Debug" doc:id="3072f767-1757-4177-93f3-d7ed9fb553d1" config-ref="json-logger-config" message="DEBUG: Inbound HTTP Request" tracePoint="END" priority="DEBUG" category="${json.logger.category.debug}" />
+        
+    </flow>
+    <flow name="dvt-sys-notification-console">
+        <http:listener config-ref="http-listener-config" path="/console/*">
+            <http:response statusCode="#[vars.httpStatus default 200]">
+                <http:headers><![CDATA[#[vars.outboundHeaders default {}]]]></http:headers>
+            </http:response>
+            <http:error-response statusCode="#[vars.httpStatus default 500]">
+                <http:body><![CDATA[#[payload]]]></http:body>
+                <http:headers><![CDATA[#[vars.outboundHeaders default {}]]]></http:headers>
+            </http:error-response>
+        </http:listener>
+		<set-variable value="${apikit.console.disabled}" doc:name="apikitConsoleDisabled" doc:id="60eb2347-c01f-44b1-b1c5-8b816b8f984e" variableName="apikitConsoleDisabled" />
+		<choice doc:name="apikitConsoleDisabled" doc:id="a3e5f883-aa65-4463-8cf6-2ad54de1f981" >
+			<when expression='#[vars.apikitConsoleDisabled == "false"]' >
+				<apikit:console config-ref="dvt-sys-notification-config" />
+			</when>
+			<otherwise >
+				<raise-error doc:name="Raise error" doc:id="976d1044-e743-4b24-b1a0-09fe9fbe7aa9" type="CONSOLE:NOT_FOUND" description="Console is not available." />
+			</otherwise>
+		</choice>
+	</flow>
+    <flow name="post:\emails:application\json:dvt-sys-notification-config">
+		<flow-ref doc:name="Flow Ref: send-email-main-flow" doc:id="10133a50-d12c-4668-9232-869d97af0ad2" name="send-email-main-flow" />
+	</flow>
+    <flow name="post:\sms:application\json:dvt-sys-notification-config">
+		<flow-ref doc:name="Flow Ref: send-sms-main-flow" doc:id="38b7abfd-8847-441e-81a0-82b6850495ba" name="send-sms-main-flow" />
+	</flow>
+</mule>

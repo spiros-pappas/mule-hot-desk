@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:json-logger="http://www.mulesoft.org/schema/mule/json-logger" xmlns:db="http://www.mulesoft.org/schema/mule/db"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/json-logger http://www.mulesoft.org/schema/mule/json-logger/current/mule-json-logger.xsd">
+	<flow name="get-bookings-main-flow" doc:id="977a061c-3511-4b70-979b-e16035754b4e" >
+		<ee:transform doc:name="Update logMessage" doc:id="3a86743f-bd78-4906-a0c2-1f7ccb50909b">
+			<ee:message />
+			<ee:variables>
+				<ee:set-variable variableName="logMessage"><![CDATA[%dw 2.0
+output application/java
+---
+{
+	message: "FLOW: get-bookings",
+	content: "Retrieving bookings for $(vars.date)."
+}]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<json-logger:logger doc:name="Logger Flow" doc:id="eb951435-db9c-4196-88f7-53e68b6972d5" config-ref="json-logger-config" message="#[vars.logMessage.message]" tracePoint="FLOW" priority='#["${json.logger.priority.flow}"]' category="${json.logger.category.flow}">
+			<json-logger:content><![CDATA[#[vars.logMessage.content]]]></json-logger:content>
+		</json-logger:logger>
+		<ee:transform doc:name="Transform Message" doc:id="50f1fefd-6951-4399-8513-1c3a733ccc9f" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="select_query" ><![CDATA[%dw 2.0
+output application/json
+---
+if (vars.employeeId != null)
+	"SELECT * from bookings where date=:date and employee_id=:employee_id;"
+else 
+	"SELECT * from bookings where date=:date;"]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<db:select doc:name="Select from bookings" doc:id="970ad1d9-0e77-4dcc-bbbc-240c7d22d105" config-ref="database-config">
+			<db:sql><![CDATA[#[vars.select_query]]]></db:sql>
+			<db:input-parameters><![CDATA[#[{date: vars.date, employee_id: vars.employeeId}]]]></db:input-parameters>
+		</db:select>
+		<choice doc:name="Choice" doc:id="828b53f3-90a4-4b0a-89a7-d31c0a050bcf" >
+			<when expression="#[sizeOf(payload)&gt;0]">
+				<ee:transform doc:name="Transform Message" doc:id="be01b678-09de-4960-be0d-e7507d3750a8">
+			<ee:message>
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload map (booking,index) -> {
+	id: booking.booking_id,
+    date: booking.date,
+    deskId: booking.desk_id,
+    employeeId: booking.employee_id
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+				<ee:transform doc:name="Update logMessage" doc:id="52ee6f0d-88d2-4e42-811c-0042cbd7de8c">
+			<ee:message />
+			<ee:variables>
+				<ee:set-variable variableName="logMessage"><![CDATA[%dw 2.0
+output application/java
+---
+{
+	message: "FLOW: get-bookings",
+	content: "Retrieved bookings for $(vars.date)."
+}]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+			</when>
+			<otherwise >
+				<ee:transform doc:name="Transform Message" doc:id="c6dffc88-98ce-44be-88d1-da76a51814de">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+	errorCode: "NOT_FOUND",
+	errorMessage: "Booking for $(vars.date) not found."
+}]]></ee:set-payload>
+					</ee:message>
+					<ee:variables >
+						<ee:set-variable variableName="httpStatus" ><![CDATA[404]]></ee:set-variable>
+					</ee:variables>
+				</ee:transform>
+				<ee:transform doc:name="Update logMessage" doc:id="8bf47e04-2c4d-4799-aae7-fcb390bca6a0" >
+					<ee:message />
+					<ee:variables >
+						<ee:set-variable variableName="logMessage" ><![CDATA[%dw 2.0
+output application/java
+---
+{
+	message: "FLOW: get-bookings",
+	content: "Bookings for $(vars.date) not found."
+}]]></ee:set-variable>
+					</ee:variables>
+				</ee:transform>
+			</otherwise>
+		</choice>
+		<json-logger:logger doc:name="Logger Flow" doc:id="a329b960-5a06-41ad-9a36-59c5d372d363" config-ref="json-logger-config" message="#[vars.logMessage.message]" tracePoint="FLOW" priority='#["${json.logger.priority.flow}"]' category="${json.logger.category.flow}" >
+			<json-logger:content ><![CDATA[#[vars.logMessage.content]]]></json-logger:content>
+		</json-logger:logger>
+	</flow>
+	<flow name="postBookingFlow" doc:id="879f2186-6095-491f-8fa2-40df9f3447e8" >
+		<logger level="INFO" doc:name="Logger" doc:id="8dcdba19-3c4b-426f-919f-8a8756c8c8ab" message="#[payload]"/>
+		<foreach doc:name="For Each" doc:id="1a52b6b5-91fa-4f76-a95d-98b840b7fd84" collection="#[payload]">
+			<db:insert doc:name="Insert into booking table" doc:id="055cbf81-9ae0-4afb-9116-98c5b467404c" config-ref="database-config">
+			<db:sql><![CDATA[INSERT INTO `bookings` (`date`,`desk_id`,`employee_id`) VALUES (:date, :desk_id, :employee_id);]]></db:sql>
+			<db:input-parameters><![CDATA[#[{date:payload.date, desk_id:payload.deskId, employee_id:payload.employeeId}]]]></db:input-parameters>
+		</db:insert>
+		</foreach>
+		<ee:transform doc:name="Transform Message" doc:id="9b6aaba5-d23f-4cc1-8886-23c672cdba00" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+  "code": "CREATED",
+  "message": "Request was successful and resource has been created."
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="Logger" doc:id="1849f7f9-1b71-47ca-9202-02bf52190855" message="The desk is booked."/>
+	</flow>
+</mule>

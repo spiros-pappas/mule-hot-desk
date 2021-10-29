@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:os="http://www.mulesoft.org/schema/mule/os" xmlns:json-logger="http://www.mulesoft.org/schema/mule/json-logger" xmlns:secure-properties="http://www.mulesoft.org/schema/mule/secure-properties" xmlns:api-gateway="http://www.mulesoft.org/schema/mule/api-gateway" xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/api-gateway http://www.mulesoft.org/schema/mule/api-gateway/current/mule-api-gateway.xsd
+http://www.mulesoft.org/schema/mule/secure-properties http://www.mulesoft.org/schema/mule/secure-properties/current/mule-secure-properties.xsd
+http://www.mulesoft.org/schema/mule/json-logger http://www.mulesoft.org/schema/mule/json-logger/current/mule-json-logger.xsd
+http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/current/mule-os.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	
+	<global-property name="env" value="local"/>
+	
+	<global-property doc:id="555dcb71-ccc2-4823-95ad-db9ace67ec79" name="secure.key" value="${secure.key}" />
+	<secure-properties:config name="secure-properties-config" doc:name="Secure Properties Config" doc:id="5ac78525-78a7-44ef-a5f2-22ec118f6f06" file="configs/${env}.yaml" key="${secure.key}" />
+	
+	<configuration-properties doc:name="environmental-properties" file="configs/${env}.yaml" doc:id="acb064e1-5a28-4862-89ce-dbed7f917d45" />
+	<configuration-properties doc:name="common-properties" file="configs/common.yaml" doc:id="667ff778-4274-418c-89f2-70d7de3524ab" />
+	<configuration-properties doc:name="pom-properties" file="configs/pom.yaml" doc:id="383265e5-ebc0-4a4d-b730-3acda59bd195" />
+	
+	<configuration doc:name="global-error-handler" doc:id="f248e0f6-8256-4058-a94e-274fa0792ee3" defaultErrorHandler-ref="globalError_Handler" />
+	
+	<json-logger:config name="json-logger-config" doc:name="JSON Logger Config" doc:id="26ad89bb-fbbf-4c59-9b99-b4366058ab23" environment="${env}" applicationName="${application.artifactId}" applicationVersion="${application.version}" disabledFields="${json.logger.disabledFields}" contentFieldsDataMasking="${json.logger.contentFieldsDataMasking}" />
+	<http:listener-config name="http-listener-config" doc:id="6608fd6f-619b-4991-93c8-33a77a60c247" doc:name="HTTP Listener config">
+		<http:listener-connection host="0.0.0.0" port="${listener.port}">
+		</http:listener-connection>
+	</http:listener-config>
+	
+	<os:object-store name="watermarks-object-store" entryTtl="${watermarks.entryTtl}" maxEntries="${watermarks.maxEntries}" persistent="false" expirationInterval="${watermarks.expirationInterval}" entryTtlUnit="DAYS" expirationIntervalUnit="DAYS"/>
+	<os:object-store name="jobs-state-object-store" entryTtl="${jobs-state.entryTtl}" maxEntries="${jobs-state.maxEntries}" expirationInterval="${jobs-state.expirationInterval}" entryTtlUnit="DAYS" expirationIntervalUnit="DAYS"/>
+	<api-gateway:autodiscovery apiId="${autodiscovery.id}" ignoreBasePath="true" doc:name="API Autodiscovery" doc:id="68eb930e-0540-42fa-b539-a1cef63a33d9" flowRef="dvt-util-common-scheduler-main" />
+	
+	<error-handler name="globalError_Handler" doc:id="5e855887-faf2-402a-91cf-b02ca4747b1c" >
+		<on-error-propagate enableNotifications="true" logException="false" doc:name="On Error Propagate" doc:id="a50e72f3-233a-41f2-985e-d59509d0ce59" type="APIKIT:BAD_REQUEST, APIKIT:NOT_FOUND, APIKIT:METHOD_NOT_ALLOWED, APIKIT:NOT_ACCEPTABLE, APIKIT:UNSUPPORTED_MEDIA_TYPE, APIKIT:NOT_IMPLEMENTED, CONSOLE:NOT_FOUND">
+			<ee:transform doc:name="Transform Message" doc:id="892467d0-aa58-4e5c-935b-fe68c6e02382" >
+				<ee:message >
+					<ee:set-payload ><![CDATA[%dw 2.0 
+output application/json
+---
+{
+    errorCode: error.errorType.identifier,
+    errorMessage: error.description
+}]]></ee:set-payload>
+				</ee:message>
+				<ee:variables >
+					<ee:set-variable variableName="httpStatus" ><![CDATA[if (error.errorType.identifier == "BAD_REQUEST") 
+400
+else if (error.errorType.identifier == "NOT_FOUND")
+404
+else if (error.errorType.identifier == "METHOD_NOT_ALLOWED")
+405
+else if (error.errorType.identifier == "NOT_ACCEPTABLE")
+406
+else if (error.errorType.identifier == "UNSUPPORTED_MEDIA_TYPE")
+415
+else if (error.errorType.identifier == "NOT_IMPLEMENTED")
+501
+else
+500
+]]></ee:set-variable>
+				</ee:variables>
+			</ee:transform>
+			<json-logger:logger doc:name="Logger" doc:id="5ccb85a6-ec5a-4a0f-8b40-01f21966219e" config-ref="json-logger-config" message="message" tracePoint="END"/>
+		
+		</on-error-propagate>
+		<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="9496eaea-c6f6-4520-9c52-e0b66204bf45" >
+			<ee:transform doc:name="Transform Message" doc:id="a09794d1-b302-4898-a807-6040d131b83c" >
+				<ee:message >
+					<ee:set-payload ><![CDATA[%dw 2.0 
+output application/json
+---
+{
+    errorCode: vars.errorDetails.errorType default error.errorType.identifier,
+    errorMessage: (
+    	if (vars.errorDetails.errorCode != null)
+    		vars.errorDetails.errorCode default "" ++ " - " ++ vars.errorDetails.errorMessage default error.description
+    	else
+    		vars.errorDetails.errorMessage default error.description
+	)
+}]]></ee:set-payload>
+				</ee:message>
+				<ee:variables >
+					<ee:set-variable variableName="httpStatus" ><![CDATA[500]]></ee:set-variable>
+				</ee:variables>
+			</ee:transform>
+		</on-error-continue>
+	</error-handler>
+
+</mule>

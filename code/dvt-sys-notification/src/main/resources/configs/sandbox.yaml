@@ -1,0 +1,21 @@
+# Configuration file for the Sandbox environment
+config.env.filename: "configs.sandbox.yaml"
+
+# Autodiscovery Id
+autodiscovery.id: "17343883"
+
+# Overwrite JSON Logger config
+json:
+  logger:
+    priority:
+      exception: "INFO"
+      before-request: "INFO"
+      after-request: "INFO"
+
+twilio:
+  username: "![yIQdf1NHevakOLKaqOLFJ6I/PV4hzUEqDoChUsaxNp8RHBAwuRlf4mLBxxOcOaU/]"
+  password: "![R23LnWtnSFEahJ9kV+ZRUUKTJNf+OQy804kopRpFJWsva7j852IhOA8qT+NhcS1J]"
+
+email:
+  username: "![DJ9EjSHYdbtazf91+uJuTOeEjtR6vcDoloOqLzpo1Do=]"
+  password: "![DeqCOn34VSClqQXPR5OaUg==]"

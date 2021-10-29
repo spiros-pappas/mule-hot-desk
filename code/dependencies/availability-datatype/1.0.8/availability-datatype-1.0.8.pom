@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>813cde1d-689b-4689-91c2-c9f408772769</groupId>
+  <artifactId>availability-datatype</artifactId>
+  <version>1.0.8</version>
+  <name>availability-datatype</name>
+  <properties>
+    <classifier>raml-fragment</classifier>
+    <main>availability-datatype.raml</main>
+    <originalFormatVersion>1.0</originalFormatVersion>
+    <projectId>40598b20-b54b-470c-aa77-9aea26972535</projectId>
+    <branchId>master</branchId>
+    <commitId>cdffc1174d943125916d90664a2311d9ccc7da68</commitId>
+    <type>raml-fragment</type>
+    <mainFile>availability-datatype.raml</mainFile>
+  </properties>
+  <repositories>
+    <repository>
+      <id>anypoint-exchange</id>
+      <url>https://maven.anypoint.mulesoft.com/api/v3/maven</url>
+    </repository>
+  </repositories>
+</project>

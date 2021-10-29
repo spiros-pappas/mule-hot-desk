@@ -1,0 +1,73 @@
+# Configuration file for the local environment
+config.env.filename: "configs.local.yaml"
+
+# Autodiscovery Id
+autodiscovery.id: "0"
+
+# Overwrite Console config
+apikit.console.disabled: "false"
+
+# Overwrite JSON Logger config
+json:
+  logger:
+    priority:
+      exception: "INFO"
+      before-request: "INFO"
+      after-request: "INFO"
+      before-transform: "INFO"
+      after-transform: "INFO"
+
+# Overwrite HTTP Listener config
+listener:
+  host: "0.0.0.0"
+  port: "8101"
+
+# HTTP Request Config
+dvt-sys-employees:
+  protocol: "HTTP"
+  host: "localhost"
+  port: "8001"
+  path: ""
+  header:
+    client_id: "![QccERoUVHqa3GaBAOKjf005nBhC6JVm/qjVTt8d4VCgUQMOviTiLg5CedHghZ2Ij]"
+    client_secret: "![Mp5sI02DK24uxtl3HkNZQWhxdJh73gVSbCJJjZOgR9STp/Bbw7jgndqXC6wq9Nyo]"
+
+# HTTP Request Config
+dvt-sys-bookings:
+  protocol: "HTTP"
+  host: "localhost"
+  port: "8002"
+  path: ""
+  header:
+    client_id: "![FxxT5X2lRxVJYeRdqnIPPp3eqao+c31FoI1w/hTKNTTDfDtWcZDY/vJEu2PchI1C]"
+    client_secret: "![bJkTuBV10GfJgAc9Rv/SBAt9GuFYkQWhIiLdkoK5zP+anZWKjVbsM3EUM6hg7ChX]"
+
+# HTTP Request Config
+dvt-sys-notification:
+  protocol: "HTTP"
+  host: "mule-worker-dvt-sys-notification-v1-sandbox.uk-e1.cloudhub.io"
+  port: "8081"
+  path: ""
+  header:
+    client_id: "![GhL6tBKzOvJsTcfQQ0O9+VzI58PsGdhQPXnYF8soR5iypJ3wYWSZEZ2OYuwMO1yw]"
+    client_secret: "![ITp9tMjC8ZE6gryWcjqf9E37St0ly3wnuApW3Rumr2K+xQH5/Sesq0XWaNLoRHO7]"
+
+# HTTP Request Config
+dvt-sys-office-plan:
+  protocol: "HTTP"
+  host: "localhost"
+  port: "8004"
+  path: ""
+  header:
+    client_id: "![YneklT2SQmQ7yI0dHLI+TLQ4L2MQtuefqqdhlTViv/5qEg8xblGgXP8kv6ZGM17n]"
+    client_secret: "![AmkRzbjBRTqLykHZM/TSX884xUtyCGm2E8JWeiCBaWPaLgNg1Sij5wggW6mifzY2]"
+
+# HTTP Request Config
+dvt-util-common-scheduler:
+  protocol: "HTTP"
+  host: "mule-worker-internal-dvt-util-common-scheduler-v1-sandbox.uk-e1.cloudhub.io"
+  port: "8091"
+  path: ""
+  header:
+    client_id: "![FYg9UJNCOPzA5ZC5FkSmMe+uCOmDfRo/khCr9nPjIWc3RW2Jlt2oiUbQbBRM2gAO]"
+    client_secret: "![s6SNt3rzZacRHv2Soq65DC9Xbd27bm+TahWSBuST4nfGAzUdLZ4U1rdbGtHc0VAL]"

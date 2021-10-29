@@ -1,0 +1,31 @@
+# Configuration file for the local environment
+config.env.filename: "configs.local.yaml"
+
+# Autodiscovery Id
+autodiscovery.id: "0"
+
+# Overwrite Console config
+apikit.console.disabled: "false"
+
+# Overwrite JSON Logger config
+json:
+  logger:
+    priority:
+      exception: "INFO"
+      before-request: "INFO"
+      after-request: "INFO"
+      before-transform: "INFO"
+      after-transform: "INFO"
+
+# Overwrite HTTP Listener config
+listener:
+  host: "0.0.0.0"
+  port: "8003"
+
+twilio:
+  username: "![yIQdf1NHevakOLKaqOLFJ6I/PV4hzUEqDoChUsaxNp8RHBAwuRlf4mLBxxOcOaU/]"
+  password: "![R23LnWtnSFEahJ9kV+ZRUUKTJNf+OQy804kopRpFJWsva7j852IhOA8qT+NhcS1J]"
+
+email:
+  username: "![DJ9EjSHYdbtazf91+uJuTOeEjtR6vcDoloOqLzpo1Do=]"
+  password: "![c+8n49yDZF9gUQibqIdZRZWYC0ftndoOQpbxv2dBjx8=]"

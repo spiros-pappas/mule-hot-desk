@@ -1,0 +1,41 @@
+# Configuration file for the local environment
+config.env.filename: "configs.local.yaml"
+
+# Autodiscovery Id
+autodiscovery.id: "0"
+
+# Overwrite Console config
+apikit.console.disabled: "false"
+
+# Overwrite JSON Logger config
+json:
+  logger:
+    priority:
+      exception: "INFO"
+      before-request: "INFO"
+      after-request: "INFO"
+      before-transform: "INFO"
+      after-transform: "INFO"
+
+# Overwrite HTTP Listener config
+listener:
+  host: "0.0.0.0"
+  port: "8101"
+
+dvt-sys-employees:
+  protocol: "HTTP"
+  host: "localhost"
+  port: "8001"
+  path: ""
+  header:
+    client_id: "![QccERoUVHqa3GaBAOKjf005nBhC6JVm/qjVTt8d4VCgUQMOviTiLg5CedHghZ2Ij]"
+    client_secret: "![Mp5sI02DK24uxtl3HkNZQWhxdJh73gVSbCJJjZOgR9STp/Bbw7jgndqXC6wq9Nyo]"
+
+dvt-sys-bookings:
+  protocol: "HTTP"
+  host: "localhost"
+  port: "8002"
+  path: ""
+  header:
+    client_id: "![XotTLtu1t3DsKiB7Em3lk1AfxQvWAZYQ7T3EE8A99YLwyDUorMepf4clQB7pyKQD]"
+    client_secret: "![qTX0qTXNpDKYOvoN4zadA4757x2j1FI+D+aTEab5aIV0uEy9a9OtVjcol3ulhZju]"

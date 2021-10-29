@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:json-logger="http://www.mulesoft.org/schema/mule/json-logger" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd  http://www.mulesoft.org/schema/mule/json-logger http://www.mulesoft.org/schema/mule/json-logger/current/mule-json-logger.xsd http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+    <apikit:config name="dvt-prc-intention-config" api="resource::813cde1d-689b-4689-91c2-c9f408772769:dvt-prc-intention:1.0.18:raml:zip:dvt-prc-intention.raml" outboundHeadersMapName="outboundHeaders" httpStatusVarName="httpStatus" />
+    <flow name="dvt-prc-intention-main">
+        <http:listener config-ref="http-listener-config" path="/*">
+            <http:response statusCode="#[vars.httpStatus default 200]">
+                <http:headers><![CDATA[#[vars.outboundHeaders default {}]]]></http:headers>
+            </http:response>
+            <http:error-response statusCode="#[vars.httpStatus default 500]">
+                <http:body><![CDATA[#[payload]]]></http:body>
+                <http:headers><![CDATA[#[vars.outboundHeaders default {}]]]></http:headers>
+            </http:error-response>
+        </http:listener>
+        <json-logger:logger doc:name="Logger Debug" doc:id="19a9b807-8b84-4aa1-a596-1ddfc55c2479" config-ref="json-logger-config" message="DEBUG: Inbound HTTP Request" priority="DEBUG" category="${json.logger.category.debug}">
+            <json-logger:content><![CDATA[#[import modules::JSONLoggerModule output application/json ---
+{
+    attributes: JSONLoggerModule::stringifyNonJSON(attributes),
+    payload: JSONLoggerModule::stringifyNonJSON(payload) 
+}]]]></json-logger:content>
+        </json-logger:logger>
+        <ee:transform doc:name="Prepare logMessage" doc:id="0fbf9f0e-05c6-4743-a52a-26d7252a7c3a">
+            <ee:message />
+            <ee:variables>
+                <ee:set-variable variableName="logMessage"><![CDATA[%dw 2.0
+output application/json
+---
+{
+	message: "START: Inbound HTTP Request",
+	content: {
+		remoteAddress: message.attributes.remoteAddress,
+		method: message.attributes.method,
+		requestPath: message.attributes.requestPath,
+		headers: {
+			client_id: message.attributes.headers.client_id,
+			client_secret: message.attributes.headers.client_secret
+		},
+		queryParams: message.attributes.queryParams
+	}
+}]]></ee:set-variable>
+            </ee:variables>
+        </ee:transform>
+        <json-logger:logger doc:name="Logger Start" doc:id="bf525c94-c7a3-408f-9871-08eb30b942d0" config-ref="json-logger-config" message="#[vars.logMessage.message]" priority="#[&quot;${json.logger.priority.start}&quot;]" category="${json.logger.category.start}">
+            <json-logger:content><![CDATA[#[output application/json 
+---
+vars.logMessage.content]]]></json-logger:content>
+        </json-logger:logger>
+        <apikit:router config-ref="dvt-prc-intention-config" />
+        <ee:transform doc:name="Update logMessage" doc:id="176936a8-938b-4036-b7a8-ff72f263f515">
+            <ee:message />
+            <ee:variables>
+                <ee:set-variable variableName="logMessage"><![CDATA[%dw 2.0
+output application/json
+---
+{
+	message: "END: Outbound HTTP Response",
+	content: {
+		httpStatus: vars.httpStatus
+	}
+}]]></ee:set-variable>
+            </ee:variables>
+        </ee:transform>
+        <json-logger:logger doc:name="Logger End" doc:id="105b43fc-3b66-4528-a71b-4d6792edc5b1" config-ref="json-logger-config" tracePoint="END" priority="#[&quot;${json.logger.priority.end}&quot;]" category="${json.logger.category.end}" message="#[vars.logMessage.message]">
+            <json-logger:content><![CDATA[#[output application/json 
+---
+vars.logMessage.content]]]></json-logger:content>
+        </json-logger:logger>
+        <json-logger:logger doc:name="Logger Debug" doc:id="f099f13f-0bc3-4ab6-aae7-e8f708b90264" config-ref="json-logger-config" tracePoint="END" priority="DEBUG" category="${json.logger.category.debug}" message="DEBUG: Outbound HTTP Request" />
+    </flow>
+    <flow name="dvt-prc-intention-console">
+        <http:listener config-ref="http-listener-config" path="/console/*">
+            <http:response statusCode="#[vars.httpStatus default 200]">
+                <http:headers><![CDATA[#[vars.outboundHeaders default {}]]]></http:headers>
+            </http:response>
+            <http:error-response statusCode="#[vars.httpStatus default 500]">
+                <http:body><![CDATA[#[payload]]]></http:body>
+                <http:headers><![CDATA[#[vars.outboundHeaders default {}]]]></http:headers>
+            </http:error-response>
+        </http:listener>
+        <set-variable value="${apikit.console.disabled}" doc:name="apikitConsoleDisabled" doc:id="06379a9b-7d3d-48d2-aa2a-4c10dac47bf0" variableName="apikitConsoleDisabled" />
+        <choice doc:name="apikitConsoleDisabled" doc:id="234c8f53-267c-4a8c-9068-d92f1fdcc49d">
+            <when expression="#[vars.apikitConsoleDisabled == &quot;false&quot;]">
+                <apikit:console config-ref="dvt-prc-intention-config" />
+            </when>
+            <otherwise>
+                <raise-error doc:name="Raise error" doc:id="258fb779-556a-489d-bfd2-994371ba4b8c" type="CONSOLE:NOT_FOUND" description="Console is not available." />
+            </otherwise>
+        </choice>
+    </flow>
+    <flow name="post:\book-hotdesk:application\json:dvt-prc-intention-config">
+        <flow-ref doc:name="Flow Ref: book-hotdesk-main-flow" doc:id="bc06108c-fdb1-408c-ba7b-54c24d5d48ce" name="book-hotdesk-main-flow" />
+    </flow>
+    <flow name="post:\booking-status:application\json:dvt-prc-intention-config">
+        <flow-ref doc:name="Flow Ref: booking-status-main-flow" doc:id="a92ee588-fce3-42db-91be-cfe1d6ef7116" name="booking-status-main-flow" />
+    </flow>
+    <flow name="post:\team-bookings:application\json:dvt-prc-intention-config">
+		<flow-ref doc:name="Flow Ref: get-team-bookings-main-flow" doc:id="298af61d-f936-44e8-85cd-0b9d52f832c5" name="get-team-bookings-main-flow"/>
+    </flow>
+    <flow name="post:\cancel-booking:application\json:dvt-prc-intention-config">
+		<flow-ref doc:name="Flow Ref: cancel-booking-main-flow" doc:id="c2ee73e7-22da-46c6-a125-c3424550bac7" name="cancel-booking-main-flow"/>
+    </flow>
+</mule>

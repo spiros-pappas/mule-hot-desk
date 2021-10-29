@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>813cde1d-689b-4689-91c2-c9f408772769</groupId>
+  <artifactId>address-datatype</artifactId>
+  <version>1.0.2</version>
+  <name>address-datatype</name>
+  <properties>
+    <classifier>raml-fragment</classifier>
+    <main>address-datatype.raml</main>
+    <originalFormatVersion>1.0</originalFormatVersion>
+    <projectId>9b26a3f9-18c9-4dc9-9a8f-0f1c39e0ea04</projectId>
+    <branchId>master</branchId>
+    <commitId>605f1b46257a5c2105bb2784540c25d5f3de42a1</commitId>
+    <type>raml-fragment</type>
+    <mainFile>address-datatype.raml</mainFile>
+  </properties>
+  <repositories>
+    <repository>
+      <id>anypoint-exchange</id>
+      <url>https://maven.anypoint.mulesoft.com/api/v3/maven</url>
+    </repository>
+  </repositories>
+</project>

@@ -1,0 +1,33 @@
+# Configuration file for the local environment
+config.env.filename: "configs.local.yaml"
+
+# Autodiscovery Id
+autodiscovery.id: "0"
+
+# Overwrite Console config
+apikit.console.disabled: "false"
+
+# Overwrite JSON Logger config
+json:
+  logger:
+    priority:
+      exception: "INFO"
+      before-request: "INFO"
+      after-request: "INFO"
+      before-transform: "INFO"
+      after-transform: "INFO"
+
+# Overwrite HTTP Listener config
+listener:
+  host: "0.0.0.0"
+  port: "8201"
+
+# HTTP Request Config
+dvt-prc-intention:
+  protocol: "HTTP"
+  host: "localhost"
+  port: "8101"
+  path: ""
+  header:
+    client_id: "![uz5wDWrG9YJJeE6YkyzkD6gPrvjKtWlFaUhIJybhOJkWkc0sznEDS2S/Q7tcvMc0]"
+    client_secret: "![14r8o3beV3CF1h0/U7b6liInUbwQUzCQnuXyWFieSdIuL+bXojtRiaL0o/rRHJKF]"

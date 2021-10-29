@@ -1,0 +1,4 @@
+#NOTE: This is a Maven Resolver internal implementation file, its format can be changed without prior notice.
+#Fri Oct 29 11:14:50 BST 2021
+default-error-responses-trait-1.0.0.pom>anypoint-exchange-v2=
+default-error-responses-trait-1.0.0-raml-fragment.zip>anypoint-exchange-v2=

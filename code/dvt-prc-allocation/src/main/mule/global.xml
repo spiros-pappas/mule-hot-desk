@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:vm="http://www.mulesoft.org/schema/mule/vm"
+	xmlns:json-logger="http://www.mulesoft.org/schema/mule/json-logger"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:tls="http://www.mulesoft.org/schema/mule/tls"
+	xmlns:api-gateway="http://www.mulesoft.org/schema/mule/api-gateway"
+	xmlns:secure-properties="http://www.mulesoft.org/schema/mule/secure-properties" xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/vm http://www.mulesoft.org/schema/mule/vm/current/mule-vm.xsd 
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd 
+http://www.mulesoft.org/schema/mule/tls http://www.mulesoft.org/schema/mule/tls/current/mule-tls.xsd 
+http://www.mulesoft.org/schema/mule/api-gateway http://www.mulesoft.org/schema/mule/api-gateway/current/mule-api-gateway.xsd 
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd
+http://www.mulesoft.org/schema/mule/secure-properties http://www.mulesoft.org/schema/mule/secure-properties/current/mule-secure-properties.xsd
+http://www.mulesoft.org/schema/mule/json-logger http://www.mulesoft.org/schema/mule/json-logger/current/mule-json-logger.xsd">
+	
+	<global-property name="env" value="local"/>
+	
+	<global-property doc:name="Global Property" doc:id="1253847e-0b5f-4c0f-aacf-427c9100f0c6" name="secure.key" value="${secure.key}" />
+	<secure-properties:config name="secure-properties-config" doc:name="Secure Properties Config" doc:id="0ebe39e2-1c30-49b8-8983-56fed7ae3430" file="configs/${env}.yaml" key="${secure.key}" />
+		
+	<configuration-properties doc:name="environmental-properties" doc:id="1474f889-5155-49f5-96d9-0a67d46a8cac" file="configs/${env}.yaml"/>
+	<configuration-properties doc:name="common-properties" doc:id="4626a118-d668-4d54-85f0-7f1f39e3f8cb" file="configs/common.yaml"/>
+	<configuration-properties doc:name="pom-properties" doc:id="445514a6-4dbc-4abb-b9af-510c4b32e849" file="configs/pom.yaml"/>
+	
+	<configuration doc:name="global-error-handler" doc:id="da838897-e169-4aef-8f47-910ae6a02b9c" defaultErrorHandler-ref="globalError_Handler"/>
+	
+	<json-logger:config name="json-logger-config" doc:name="JSON Logger Config" doc:id="01ba1053-f4d4-4824-9616-a81193f6df84" environment="${env}" applicationName="${application.artifactId}" applicationVersion="${application.version}" disabledFields="${json.logger.disabledFields}" contentFieldsDataMasking="${json.logger.contentFieldsDataMasking}" />
+	
+	<http:listener-config name="http-listener-config">
+		<http:listener-connection host="0.0.0.0" port="${listener.port}"/>
+	</http:listener-config>
+	<api-gateway:autodiscovery apiId="${autodiscovery.id}" ignoreBasePath="true" doc:name="API Autodiscovery" doc:id="07dfbbb7-ebaf-469d-b2fe-a67bad198a27" flowRef="allocation-process-main-flow"/>
+	
+	<vm:config name="vm-config" doc:name="VM Config" doc:id="a68916d0-546d-4456-9da6-a5451a2cc28c" sendCorrelationId="ALWAYS" >
+		<vm:queues >
+			<vm:queue queueName="desk-allocation-vm-queue" queueType="PERSISTENT" />
+		</vm:queues>
+	</vm:config>
+	
+	<http:request-config name="http-request-config" doc:name="HTTP Request configuration" doc:id="21bc6763-6334-472c-8836-be35c02be156" responseTimeout="${request.timeout.response}">
+		<http:request-connection connectionIdleTimeout="${request.timeout.connection-idle}"></http:request-connection>
+	</http:request-config>
+	
+	<error-handler name="globalError_Handler" doc:id="d04578d7-880d-4637-875f-14d0e4542899" >
+		<on-error-propagate enableNotifications="true" logException="false" doc:name="On Error Propagate" doc:id="1feb1395-e0a6-4f4b-91b5-62925ad427b5" type="APIKIT:BAD_REQUEST, APIKIT:NOT_FOUND, APIKIT:METHOD_NOT_ALLOWED, APIKIT:NOT_ACCEPTABLE, APIKIT:UNSUPPORTED_MEDIA_TYPE, APIKIT:NOT_IMPLEMENTED, CONSOLE:NOT_FOUND">
+			<ee:transform doc:name="Transform Message" doc:id="4a612f5e-b627-4754-a46b-b85845d1da0c">
+				<ee:message>
+					<ee:set-payload ><![CDATA[%dw 2.0 
+output application/json
+---
+{
+	errorCode: error.errorType.identifier,
+	errorMessage: error.description
+}]]></ee:set-payload>
+				</ee:message>
+				<ee:variables>
+					<ee:set-variable variableName="httpStatus"><![CDATA[if (error.errorType.identifier == "BAD_REQUEST") 
+400
+else if (error.errorType.identifier == "NOT_FOUND")
+404
+else if (error.errorType.identifier == "METHOD_NOT_ALLOWED")
+405
+else if (error.errorType.identifier == "NOT_ACCEPTABLE")
+406
+else if (error.errorType.identifier == "UNSUPPORTED_MEDIA_TYPE")
+415
+else if (error.errorType.identifier == "NOT_IMPLEMENTED")
+501
+else
+500
+]]></ee:set-variable>
+				</ee:variables>
+			</ee:transform>
+			<json-logger:logger doc:name="Logger Exception" doc:id="3f613371-40b1-4535-bbef-3dfe1da36482" config-ref="json-logger-config" message="EXCEPTION: Global Error Handler" tracePoint="EXCEPTION" priority='#["${json.logger.priority.exception}"]' category="${json.logger.category.exception}" />
+		</on-error-propagate>
+		<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="01f988c6-303d-471b-b14c-203d73dc3ac7" >
+			<ee:transform doc:name="Transform Message" doc:id="1fa8ec87-6c38-4076-a72e-5d8bc4d1eefa">
+				<ee:message>
+					<ee:set-payload><![CDATA[%dw 2.0 
+output application/json
+---
+{
+	errorCode: 'FAILED',
+	errorMessage: error.description
+}]]></ee:set-payload>
+				</ee:message>
+				<ee:variables>
+					<ee:set-variable variableName="httpStatus"><![CDATA[500]]></ee:set-variable>
+				</ee:variables>
+			</ee:transform>
+			<json-logger:logger doc:name="Logger Exception" doc:id="34b7b7f6-00b0-4579-8b15-18ffc9fd598b" config-ref="json-logger-config" message="EXCEPTION: Global Error Handler" tracePoint="EXCEPTION" priority='#["${json.logger.priority.exception}"]' category="${json.logger.category.exception}" />
+		</on-error-continue>
+	</error-handler>
+	
+</mule>

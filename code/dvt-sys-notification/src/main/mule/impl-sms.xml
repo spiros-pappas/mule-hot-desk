@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:secure-properties="http://www.mulesoft.org/schema/mule/secure-properties" xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns:email="http://www.mulesoft.org/schema/mule/email"
+	xmlns:twilio="http://www.mulesoft.org/schema/mule/twilio" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/twilio http://www.mulesoft.org/schema/mule/twilio/current/mule-twilio.xsd
+http://www.mulesoft.org/schema/mule/email http://www.mulesoft.org/schema/mule/email/current/mule-email.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/secure-properties http://www.mulesoft.org/schema/mule/secure-properties/current/mule-secure-properties.xsd">
+	<flow name="send-sms-main-flow" doc:id="b609ab7c-c421-49f5-8fcb-8d234f872a23" >
+		<ee:transform doc:name="Transform Message" doc:id="fd6aea47-6b4a-486e-aa4b-b1c9fb323b02" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/x-www-form-urlencoded
+---
+{
+	From: "+12185850023",
+	To: payload.toNumber,
+	Body: payload.body
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<twilio:create20100401-accounts-messagesjson-by-account-sid doc:name="Create Message" doc:id="be5f5fbe-f0e8-4754-9c8e-a1b009a88064" config-ref="Twilio_Connector_Config" accountSid="AC64f5ed457986af32815919513fef2519"/>
+		<logger level="INFO" doc:name="Logger" doc:id="5e129216-ddef-4346-87d6-ece4f77f6791" message="#[payload]"/>
+	</flow>
+</mule>

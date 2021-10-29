@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:json-logger="http://www.mulesoft.org/schema/mule/json-logger"
+	xmlns:os="http://www.mulesoft.org/schema/mule/os"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/current/mule-os.xsd
+http://www.mulesoft.org/schema/mule/json-logger http://www.mulesoft.org/schema/mule/json-logger/current/mule-json-logger.xsd">
+	<sub-flow name="trigger-job-sub-flow" doc:id="d885bc77-9821-4de8-8ad5-db77213d194e" >
+		<ee:transform doc:name="Prepare jobData" doc:id="adedd276-2727-490e-a15b-6cf84bab5f43">
+			<ee:message />
+			<ee:variables>
+				<ee:set-variable resource="transforms/job-data.dwl" variableName="jobData" />
+			</ee:variables>
+		</ee:transform>
+		<os:retrieve doc:name="Fetch Watermark" doc:id="d1be732a-42fa-4b61-9c74-12aaaa361567" key="#[vars.jobData.scheduleId]" objectStore="watermarks-object-store" target="watermark">
+			<os:default-value><![CDATA[#[%dw 2.0
+output application/json
+var time = (now() >> p('common-scheduler.timezone')) as String {format: "yyyy-MM-dd'T'HH:mm:ss"}
+---
+{
+	lastSuccess: time
+}]]]></os:default-value>
+		</os:retrieve>
+		<ee:transform doc:name="Insert Job State Message" doc:id="f0810deb-60c9-414e-97ca-565dcd5b6b27">
+			<ee:message />
+			<ee:variables>
+				<ee:set-variable resource="transforms/job-state-insert.dwl" variableName="jobState" />
+			</ee:variables>
+		</ee:transform>
+		<os:store doc:name="jobs-state Object Store" doc:id="046cf840-b240-4b53-988d-3dd91cf6b246" key="#[vars.jobState.jobId]" objectStore="jobs-state-object-store">
+			<os:value><![CDATA[#[vars.jobState]]]></os:value>
+		</os:store>
+		<ee:transform doc:name="Build Request" doc:id="6c693792-840b-4686-a858-5cead1515ee2">
+			<ee:message>
+				<ee:set-payload resource="transforms/job-request-payload.dwl" />
+			</ee:message>
+			<ee:variables>
+				<ee:set-variable resource="transforms/job-request.dwl" variableName="request" />
+			</ee:variables>
+		</ee:transform>
+		<flow-ref doc:name="Mule RESTful API" doc:id="f780bcdb-2e87-4301-8730-9f8edfead4d4" name="bs-http-request-no-auth"/>
+		<ee:transform doc:name="Update Job State Message" doc:id="7ef9563e-bb7d-44d7-9c41-1b0de3e88dba">
+			<ee:message>
+			</ee:message>
+			<ee:variables>
+				<ee:set-variable resource="transforms/job-state-update.dwl" variableName="jobState" />
+			</ee:variables>
+		</ee:transform>
+		<os:store doc:name="jobs-state Object Store" doc:id="88e5b751-84d2-4e71-bfb6-face96a9b402" key="#[vars.jobState.jobId]" objectStore="jobs-state-object-store">
+			<os:value><![CDATA[#[vars.jobState]]]></os:value>
+		</os:store>
+	</sub-flow>
+</mule>

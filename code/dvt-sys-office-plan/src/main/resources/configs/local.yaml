@@ -1,0 +1,28 @@
+# Configuration file for the local environment
+config.env.filename: "configs.local.yaml"
+
+# Autodiscovery Id
+autodiscovery.id: "0"
+
+# Overwrite Console config
+apikit.console.disabled: "false"
+
+# Overwrite JSON Logger config
+json:
+  logger:
+    priority:
+      exception: "INFO"
+      before-request: "INFO"
+      after-request: "INFO"
+      before-transform: "INFO"
+      after-transform: "INFO"
+
+# Overwrite HTTP Listener config
+listener:
+  host: "0.0.0.0"
+  port: "8004"
+
+# MongoDB
+mongo:
+  username: "![ibZWnVWgyaf3Sh7BCIeAww==]"
+  password: "![rqtsCfW44yWhTDupWZNsTQ==]"

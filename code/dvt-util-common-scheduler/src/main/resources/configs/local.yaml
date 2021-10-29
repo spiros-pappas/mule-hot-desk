@@ -1,0 +1,48 @@
+# Configuration file for the local environment
+config.env.filename: "configs.local.yaml"
+
+# Autodiscovery Id
+autodiscovery.id: "0"
+
+# Overwrite Console config
+apikit.console.disabled: "false"
+
+# Overwrite JSON Logger config
+json:
+  logger:
+    priority:
+      exception: "INFO"
+      before-request: "INFO"
+      after-request: "INFO"
+      before-transform: "INFO"
+      after-transform: "INFO"
+
+# Overwrite HTTP Listener config
+listener:
+  host: "0.0.0.0"
+  port: "8301"
+
+# Common Scheduler API Configuration
+common-scheduler:
+  callback: 
+    protocol: "HTTP"
+    host: "localhost"
+    port: "${listener.port}"
+    path: "jobs/(jobId)"
+
+# HTTP Request config for job: desk-allocation
+dvt-prc-allocation:
+  protocol: "HTTP"
+  host: "localhost"
+  port: "8101"
+  path: "job/desk-allocation"
+  method: "POST"
+  timeout:
+    connection-idle: "3000"
+    response: "120000"
+  reconnection:
+    frequency: "2000"
+    attempts: "2"
+  header:
+    client_id: "18d25607af8f4aca8ad4e9e188a38e7e"
+    client_secret: "![b3Rkv9TaCoSMoY6OIzZco8exQxv6XUbjV1Ps1lJ0XN33TeOEMY3+MyeSLosDZPxM]"

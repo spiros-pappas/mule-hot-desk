@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+  xmlns:os="http://www.mulesoft.org/schema/mule/os"
+  xmlns:http="http://www.mulesoft.org/schema/mule/http"
+  xmlns="http://www.mulesoft.org/schema/mule/core"
+  xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/current/mule-os.xsd">
+	<flow name="get-jobs-main-flow" doc:id="90e1229f-9047-49ee-8dfe-d586142f0256">
+    <os:retrieve-all doc:name="Retrieve all jobs" doc:id="7b4c8200-a1c1-4ec6-a865-166e3daf7dcf" objectStore="jobs-state-object-store" target="osValue" />
+		<ee:transform doc:name="Convert to JSON" doc:id="08157e7c-a436-4933-982f-9d261060dd4f">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+vars.osValue]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<ee:transform doc:name="Object to Array" doc:id="40d291f7-d003-46b5-8ac7-e85e0267b6ca" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+var jobs = 
+	message.payload mapObject (value, key) -> {
+		job: read(value,'application/json')
+	}
+---
+jobs.*job map (item, index) -> {
+	jobId: item.jobId,
+    watermarkId: item.watermarkId,
+    requestDate: item.requestDate,
+    startDateTime: item.startDateTime,
+    endDateTime: item.endDateTime,
+    status: item.status
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<choice doc:name="Choice" doc:id="9ee9b704-575e-4e6c-bec0-2af1d86349e8" >
+			<when expression='#[vars.watermarkId != ""]'>
+				<ee:transform doc:name="Watermark ID Filter" doc:id="039ce346-b397-4885-994f-3b476312fa23">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+(message.payload filter ( (item, index) -> item.watermarkId contains(vars.watermarkId) ))]]></ee:set-payload>
+			</ee:message>
+			<ee:variables />
+		</ee:transform>
+			</when>
+		</choice>
+		<choice doc:name="Choice" doc:id="3d0f71b7-549a-4566-8134-c5b0288b710d" >
+			<when expression='#[vars.startDate != ""]'>
+				<ee:transform doc:name="Start Date Filter" doc:id="8e0bb47b-d9ee-4a20-931e-ef5749a1266f">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+(message.payload filter ( (item, index) -> item.startDateTime default "" contains(vars.startDate) ))]]></ee:set-payload>
+			</ee:message>
+			<ee:variables />
+		</ee:transform>
+			</when>
+		</choice>
+		<choice doc:name="Choice" doc:id="ed1c4b21-9d89-458a-bc0a-faa4528b7bc7" >
+			<when expression='#[vars.status != ""]'>
+				<ee:transform doc:name="Status Filter" doc:id="4c49b96a-083b-43f6-89c6-422f674c511c">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+(message.payload filter ( (item, index) -> item.status contains(vars.status) ))]]></ee:set-payload>
+			</ee:message>
+			<ee:variables />
+		</ee:transform>
+			</when>
+		</choice>
+	
+</flow>
+	<flow name="get-job-by-id-main-flow" doc:id="ee84e395-ee2f-4e25-b4c8-3b689eacf09f">
+    <os:retrieve doc:name="Retrieve key from OS" doc:id="6dc77b08-8531-4da5-a4ce-108ef73ef590" key="#[attributes.uriParams.jobId]" objectStore="jobs-state-object-store" target="osValue">
+					<os:default-value><![CDATA[#[%dw 2.0
+output application/json
+---
+{
+	message: "Doesn't exist"
+}]]]></os:default-value>
+				</os:retrieve>
+		<ee:transform doc:name="Convert to JSON" doc:id="38ed5666-bb57-4fb1-87a6-8348015322b3">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+vars.osValue]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="patch-job-main-flow">
+    <set-variable value="#[message.attributes.uriParams.jobId]" doc:name="Set jobId" doc:id="654407cc-8842-4c04-ad21-536f2d464be1" variableName="jobId"/>
+		<os:retrieve doc:name="Retrieve Job State" doc:id="6db485ff-3f6f-44d5-8958-3d8d44efdc35" key="#[vars.jobId]" objectStore="jobs-state-object-store" target="jobState">
+			<os:default-value><![CDATA[#[%dw 2.0
+output application/json
+var time=(now() >> p('common-scheduler.timezone')) as String {format: "yyyy-MM-dd'T'HH:mm:ss"}
+---
+{
+	jobId: "default" ++ uuid(),
+	startDateTime: time,
+	endDateTime: time,
+	status: "Success"
+}]]]></os:default-value>
+		</os:retrieve>
+		<choice doc:name="Check if job exists" doc:id="61e312de-47ff-4715-bf0b-95ea258d3e56" >
+			<when expression="#[vars.jobId == vars.jobState.jobId]">
+				<ee:transform doc:name="Update Job State Message" doc:id="73bdec19-b626-477a-bf5f-e3bde99556fb">
+			<ee:message>
+			</ee:message>
+					<ee:variables >
+						<ee:set-variable resource="transforms/callbackItemUpdate.dwl" variableName="jobState" />
+					</ee:variables>
+		
+</ee:transform>
+				<os:store doc:name="jobs-state Object Store" doc:id="9eaafa66-26a7-4c65-8632-3ea0c86325c2" key="#[vars.jobState.jobId]" objectStore="jobs-state-object-store">
+					<os:value ><![CDATA[#[vars.jobState]]]></os:value>
+
+		</os:store>
+				<choice doc:name="Update Watermark" doc:id="d0ba67cf-ff4c-4e5f-a937-a7d752c8d19a">
+					<when expression='#[lower(message.payload.status) == "success"]'>
+						<os:retrieve doc:name="Retrieve Watermark" doc:id="cad5b0ea-a4a1-4511-91bb-3bc60c1b3da2" key='#[vars.jobState.watermarkId]' objectStore="watermarks-object-store" target="watermark">
+			<os:default-value><![CDATA[#[%dw 2.0
+output application/json
+var time = (now() >> p('common-scheduler.timezone')) as String {format: "yyyy-MM-dd'T'HH:mm:ss"}
+---
+{
+	watermarkId: vars.jobState.watermarkId,
+	lastSuccess: time
+}]]]></os:default-value>
+		</os:retrieve>
+						<ee:transform doc:name="Update Watermark Message" doc:id="d32211e3-92c4-4595-a1ab-7f6da4516976">
+			<ee:message>
+			</ee:message>
+							<ee:variables >
+								<ee:set-variable resource="transforms/callbackHeaderUpdate.dwl" variableName="watermark" />
+							</ee:variables>
+		
+</ee:transform>
+						<os:store doc:name="watermark Object Store" doc:id="70fe7338-ba61-48d4-aee8-dc220063d6e9" key='#[vars.watermark.watermarkId]' objectStore="watermarks-object-store">
+							<os:value ><![CDATA[#[vars.watermark]]]></os:value>
+
+		</os:store>
+					</when>
+				</choice>
+				<ee:transform doc:name="Transform Response" doc:id="b6f46898-39cf-43b0-9973-46bc7ae2aeab" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+	code: "OK",
+	message: "Job state updated successfully."
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+			</when>
+			<otherwise>
+				<raise-error doc:name="Raise error" doc:id="392f6754-13c8-4381-8464-dabc927e339f" type="JOB:NOT_FOUND" description='No job found with that id.'/>
+			</otherwise>
+		</choice>
+    
+</flow>
+</mule>

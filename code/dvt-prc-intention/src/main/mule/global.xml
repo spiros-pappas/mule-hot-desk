@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:os="http://www.mulesoft.org/schema/mule/os" 
+	xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:api-gateway="http://www.mulesoft.org/schema/mule/api-gateway"
+	xmlns:tls="http://www.mulesoft.org/schema/mule/tls"
+	xmlns:secure-properties="http://www.mulesoft.org/schema/mule/secure-properties" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:json-logger="http://www.mulesoft.org/schema/mule/json-logger" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/secure-properties http://www.mulesoft.org/schema/mule/secure-properties/current/mule-secure-properties.xsd
+http://www.mulesoft.org/schema/mule/tls http://www.mulesoft.org/schema/mule/tls/current/mule-tls.xsd
+http://www.mulesoft.org/schema/mule/json-logger http://www.mulesoft.org/schema/mule/json-logger/current/mule-json-logger.xsd
+http://www.mulesoft.org/schema/mule/api-gateway http://www.mulesoft.org/schema/mule/api-gateway/current/mule-api-gateway.xsd
+http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/current/mule-os.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<global-property doc:name="Global Property" doc:id="a57033e8-8e1b-4508-a95b-10d85eb89e97" name="env" value="local" />
+	<global-property doc:name="Global Property" doc:id="842e172c-8c39-45f1-b45e-ccb05cda5259" name="encKey" value="${secure.key}" />
+	<secure-properties:config name="secure-properties-config" doc:name="Secure Properties Config" doc:id="8d2559e7-1ce2-4b97-b709-3b5b75f414c6" file="configs/${env}.yaml" key="${secure.key}" />
+	<configuration-properties doc:name="environmental-properties" doc:id="0dd3aa07-cb59-41d8-92d8-77c82bc48a49" file="configs/${env}.yaml" />
+	<configuration-properties doc:name="common-properties" doc:id="ff7be8f8-2bc7-4b89-8efc-ef493e286036" file="configs/common.yaml" />
+	<configuration-properties doc:name="pom-properties" doc:id="d3824697-ecff-4218-92a4-d00b11340332" file="configs/pom.yaml" />
+	<http:listener-config name="http-listener-config">
+        <http:listener-connection host="0.0.0.0" port="${listener.port}" />
+    </http:listener-config>
+    <json-logger:config name="json-logger-config" doc:name="JSON Logger Config" doc:id="eb872282-876b-4ad3-a42b-dc764aa42eef" applicationName="${application.artifactId}" applicationVersion="${application.version}" environment="${env}" disabledFields="${json.logger.disabledFields}" contentFieldsDataMasking="${json.logger.contentFieldsDataMasking}" />
+	<api-gateway:autodiscovery apiId="${autodiscovery.id}" ignoreBasePath="true" doc:name="API Autodiscovery" doc:id="ae1daafb-2e75-4aa3-897a-118254bea7f6" flowRef="dvt-prc-intention-main" />
+	<configuration doc:name="global-errorHandler" doc:id="ecfade44-1fd2-4315-b63b-2be0dce413ac" defaultErrorHandler-ref="globalError_Handler" />
+	<http:request-config name="http-request-config" doc:name="HTTP Request configuration" doc:id="7552955b-d1ad-4fc6-a5bb-8b73f26d0d41" responseTimeout="${request.timeout.response}">
+		<http:request-connection connectionIdleTimeout="${request.timeout.connection-idle}"></http:request-connection>
+	</http:request-config>
+	<http:request-config name="http-request-config-booking" doc:name="HTTP Request configuration" doc:id="b322e268-50be-4799-812e-32ff6cabbe17" >
+		<http:request-connection protocol="${dvt-sys-bookings.protocol}" host="${dvt-sys-bookings.host}" port="${dvt-sys-bookings.port}" maxConnections="${request.max-connections}" connectionIdleTimeout="${request.timeout.connection-idle}">
+			<reconnection >
+				<reconnect frequency="${reconnection.frequency}" count="${reconnection.attempts}" />
+			</reconnection>
+		</http:request-connection>
+		<http:default-headers >
+			<http:default-header key="client_id" value="#[p('secure::dvt-sys-bookings.header.client_id')]" />
+			<http:default-header key="client_secret" value="#[p('secure::dvt-sys-bookings.header.client_secret')]" />
+		</http:default-headers>
+	</http:request-config>
+	<os:config name="ObjectStore_Config" doc:name="ObjectStore Config" doc:id="13f4d7dd-927e-4ce0-8279-e69c8f7db9ca" >
+		<os:connection >
+			<reconnection >
+				<reconnect />
+			</reconnection>
+		</os:connection>
+	</os:config>
+	<os:object-store name="obj-store-availability-results" doc:name="Object store" doc:id="c6668b13-675f-4e73-9387-1de9fa5df5db" maxEntries="100" entryTtl="1" entryTtlUnit="MINUTES" expirationInterval="3" config-ref="ObjectStore_Config" />
+	<error-handler name="globalError_Handler" doc:id="c0e40aa9-305d-4e1c-b12b-a760bbc515eb" >
+		<on-error-propagate enableNotifications="true" logException="false" doc:name="On Error Propagate" doc:id="01352d7a-eba6-4c60-af73-237a6a7e3394" type="APIKIT:BAD_REQUEST, APIKIT:NOT_FOUND, APIKIT:METHOD_NOT_ALLOWED, APIKIT:NOT_ACCEPTABLE, APIKIT:UNSUPPORTED_MEDIA_TYPE, APIKIT:NOT_IMPLEMENTED, CONSOLE:NOT_FOUND">
+			<ee:transform doc:name="Transform Error Message" doc:id="9dc9bb77-2dc6-41d3-bc8d-95c9e9e58be8" >
+				<ee:message >
+					<ee:set-payload ><![CDATA[%dw 2.0 
+output application/json
+---
+{
+	errorCode: error.errorType.identifier,
+	errorMessage: error.description
+}]]></ee:set-payload>
+				</ee:message>
+				<ee:variables >
+					<ee:set-variable variableName="httpStatus" ><![CDATA[if (error.errorType.identifier == "BAD_REQUEST") 
+400
+else if (error.errorType.identifier == "NOT_FOUND")
+404
+else if (error.errorType.identifier == "METHOD_NOT_ALLOWED")
+405
+else if (error.errorType.identifier == "NOT_ACCEPTABLE")
+406
+else if (error.errorType.identifier == "UNSUPPORTED_MEDIA_TYPE")
+415
+else if (error.errorType.identifier == "NOT_IMPLEMENTED")
+501
+else
+500]]></ee:set-variable>
+				</ee:variables>
+			</ee:transform>
+			<json-logger:logger doc:name="Logger Exception" doc:id="337c9e4c-b2b9-46d6-9bc2-697881cbb9b4" config-ref="json-logger-config" message="EXCEPTION: Global Error Handler" tracePoint="EXCEPTION" priority='#["${json.logger.priority.exception}"]' category="${json.logger.category.exception}"/>
+		</on-error-propagate>
+		<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="64621c2d-7901-48c3-bbbe-ae42e57654ad" >
+			<ee:transform doc:name="Transform Error Message" doc:id="8796bcfc-82a3-4313-b4d1-c7690bb8ff00" >
+				<ee:message >
+					<ee:set-payload ><![CDATA[%dw 2.0 
+output application/json
+---
+{
+	errorCode: 'FAILED',
+	errorMessage: error.description
+}]]></ee:set-payload>
+				</ee:message>
+			</ee:transform>
+			<json-logger:logger doc:name="Logger Exception" doc:id="cde88cb2-0c6f-4aae-a60e-8188805dff54" config-ref="json-logger-config" message="EXCEPTION: Global Error Handler" tracePoint="EXCEPTION" priority='#["${json.logger.priority.exception}"]' category="${json.logger.category.exception}"/>
+		</on-error-continue>
+	</error-handler>
+</mule>

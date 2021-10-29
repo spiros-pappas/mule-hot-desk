@@ -1,0 +1,31 @@
+# Configuration file for the Sandbox environment
+config.env.filename: "configs.sandbox.yaml"
+
+# Autodiscovery Id
+autodiscovery.id: "17346247"
+
+# Overwrite JSON Logger config
+json:
+  logger:
+    priority:
+      exception: "INFO"
+      before-request: "INFO"
+      after-request: "INFO"
+
+dvt-sys-employees:
+  protocol: "HTTP"
+  host: "mule-worker-internal-dvt-sys-employees-v1-sandbox.uk-e1.cloudhub.io"
+  port: "8091"
+  path: ""
+  header:
+    client_id: "![QccERoUVHqa3GaBAOKjf005nBhC6JVm/qjVTt8d4VCgUQMOviTiLg5CedHghZ2Ij]"
+    client_secret: "![Mp5sI02DK24uxtl3HkNZQWhxdJh73gVSbCJJjZOgR9STp/Bbw7jgndqXC6wq9Nyo]"
+
+dvt-sys-bookings:
+  protocol: "HTTP"
+  host: "mule-worker-internal-dvt-sys-bookings-v1-sandbox.uk-e1.cloudhub.io"
+  port: "8091"
+  path: ""
+  header:
+    client_id: "![XotTLtu1t3DsKiB7Em3lk1AfxQvWAZYQ7T3EE8A99YLwyDUorMepf4clQB7pyKQD]"
+    client_secret: "![qTX0qTXNpDKYOvoN4zadA4757x2j1FI+D+aTEab5aIV0uEy9a9OtVjcol3ulhZju]"

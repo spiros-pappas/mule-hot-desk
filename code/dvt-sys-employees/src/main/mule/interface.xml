@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit" xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:json-logger="http://www.mulesoft.org/schema/mule/json-logger" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd  http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd http://www.mulesoft.org/schema/mule/json-logger http://www.mulesoft.org/schema/mule/json-logger/current/mule-json-logger.xsd">
+    <apikit:config name="dvt-sys-employees-config" api="resource::813cde1d-689b-4689-91c2-c9f408772769:dvt-sys-employees:1.0.1:raml:zip:dvt-sys-employees.raml" outboundHeadersMapName="outboundHeaders" httpStatusVarName="httpStatus" />
+    <flow name="dvt-sys-employees-main">
+        <http:listener config-ref="http-listener-config" path="/*">
+            <http:response statusCode="#[vars.httpStatus default 200]">
+                <http:headers><![CDATA[#[vars.outboundHeaders default {}]]]></http:headers>
+            </http:response>
+            <http:error-response statusCode="#[vars.httpStatus default 500]">
+                <http:body><![CDATA[#[payload]]]></http:body>
+                <http:headers><![CDATA[#[vars.outboundHeaders default {}]]]></http:headers>
+            </http:error-response>
+        </http:listener>
+        <json-logger:logger doc:name="Logger Debug" doc:id="62244348-e7d4-4182-9dc5-bf9616173def" config-ref="json-logger-config" message="DEBUG: Inbound HTTP Request" priority="DEBUG" category="${json.logger.category.debug}">
+            <json-logger:content><![CDATA[#[import modules::JSONLoggerModule output application/json ---
+{
+    attributes: JSONLoggerModule::stringifyNonJSON(attributes),
+    payload: JSONLoggerModule::stringifyNonJSON(payload) 
+}]]]></json-logger:content>
+        </json-logger:logger>
+        <ee:transform doc:name="Prepare logMessage" doc:id="be157f17-9026-456c-b14f-e733f4ac059f">
+            <ee:message />
+            <ee:variables>
+                <ee:set-variable variableName="logMessage"><![CDATA[%dw 2.0
+output application/json
+---
+{
+	message: "START: Inbound HTTP Request",
+	content: {
+		remoteAddress: message.attributes.remoteAddress,
+		method: message.attributes.method,
+		requestPath: message.attributes.requestPath,
+		headers: {
+			client_id: message.attributes.headers.client_id,
+			client_secret: message.attributes.headers.client_secret
+		},
+		queryParams: message.attributes.queryParams
+	}
+}]]></ee:set-variable>
+            </ee:variables>
+        </ee:transform>
+        <json-logger:logger doc:name="Logger Start" doc:id="04adf5b8-2aee-4ecc-b8fe-3b412167db31" config-ref="json-logger-config" message="#[vars.logMessage.message]" priority="#[&quot;${json.logger.priority.start}&quot;]" category="${json.logger.category.start}">
+            <json-logger:content><![CDATA[#[output application/json 
+---
+vars.logMessage.content]]]></json-logger:content>
+        </json-logger:logger>
+        <apikit:router config-ref="dvt-sys-employees-config" />
+        <ee:transform doc:name="Update logMessage" doc:id="f0fb8071-d00f-4fd5-9f2d-b720a98a9031">
+            <ee:message />
+            <ee:variables>
+                <ee:set-variable variableName="logMessage"><![CDATA[%dw 2.0
+output application/json
+---
+{
+	message: "END: Outbound HTTP Response",
+	content: {
+		httpStatus: vars.httpStatus
+	}
+}]]></ee:set-variable>
+            </ee:variables>
+        </ee:transform>
+        <json-logger:logger doc:name="Logger End" doc:id="31817e6a-0d93-4b77-99c4-a40342f870a7" config-ref="json-logger-config" message="#[vars.logMessage.message]" tracePoint="END" priority="#[&quot;${json.logger.priority.end}&quot;]" category="${json.logger.category.end}">
+            <json-logger:content><![CDATA[#[output application/json 
+---
+vars.logMessage.content]]]></json-logger:content>
+        </json-logger:logger>
+        <json-logger:logger doc:name="Logger Debug" doc:id="897458cd-c2a0-4cda-8864-5bb38add7aa2" config-ref="json-logger-config" message="DEBUG: Inbound HTTP Request" tracePoint="END" priority="DEBUG" category="${json.logger.category.debug}" />
+    </flow>
+    <flow name="dvt-sys-employees-console">
+        <http:listener config-ref="http-listener-config" path="/console/*">
+            <http:response statusCode="#[vars.httpStatus default 200]">
+                <http:headers><![CDATA[#[vars.outboundHeaders default {}]]]></http:headers>
+            </http:response>
+            <http:error-response statusCode="#[vars.httpStatus default 500]">
+                <http:body><![CDATA[#[payload]]]></http:body>
+                <http:headers><![CDATA[#[vars.outboundHeaders default {}]]]></http:headers>
+            </http:error-response>
+        </http:listener>
+        <set-variable value="${apikit.console.disabled}" doc:name="apikitConsoleDisabled" doc:id="aa99a222-ef2a-4569-b318-edd21719f883" variableName="apikitConsoleDisabled" />
+        <choice doc:name="apikitConsoleDisabled" doc:id="cec269a5-78f2-43e3-8fb7-60b9a86ea88f">
+            <when expression="#[vars.apikitConsoleDisabled == &quot;false&quot;]">
+                <apikit:console config-ref="dvt-sys-employees-config" />
+            </when>
+            <otherwise>
+                <raise-error doc:name="Raise error" doc:id="f93e302d-8642-41dc-bf89-b4b2ffcc6960" type="CONSOLE:NOT_FOUND" description="Console is not available." />
+            </otherwise>
+        </choice>
+    </flow>
+    <flow name="get:\employees:dvt-sys-employees-config">
+        <ee:transform doc:name="workEmail" doc:id="28cffff1-b7bf-4c69-ae4a-47e46abb1623" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="workEmail" ><![CDATA[%dw 2.0
+output application/java
+---
+message.attributes.queryParams.workEmail default null]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<flow-ref doc:name="Flow Ref: get-employees-main-flow" doc:id="55b6e074-6a35-411c-87d7-5a032f64ec00" name="get-employees-main-flow" />
+    </flow>
+    <flow name="get:\employments:dvt-sys-employees-config">
+        <flow-ref doc:name="Flow Ref: get-employments-main-flow" doc:id="4d14a231-b9ba-434a-aa1f-3a723445e326" name="get-employments-main-flow" />
+    </flow>
+    <flow name="get:\teams:dvt-sys-employees-config">
+        <flow-ref doc:name="Flow Ref: get-teams-main-flow" doc:id="58522685-696a-4eed-bf96-d94b9134c90b" name="get-teams-main-flow" />
+    </flow>
+    <flow name="get:\employments\(id):dvt-sys-employees-config">
+        <ee:transform>
+            <ee:variables>
+                <ee:set-variable variableName="employmentId"><![CDATA[%dw 2.0
+output application/java
+---
+attributes.uriParams.'id']]></ee:set-variable>
+            </ee:variables>
+        </ee:transform>
+        <flow-ref doc:name="Flow Ref: get-employment-by-id-main-flow" doc:id="f5899e96-0157-4fda-b90b-55db19794469" name="get-employment-by-id-main-flow" />
+    </flow>
+    <flow name="get:\teams\(id):dvt-sys-employees-config">
+        <ee:transform>
+            <ee:variables>
+                <ee:set-variable variableName="teamId"><![CDATA[%dw 2.0
+output application/java
+---
+attributes.uriParams.'id']]></ee:set-variable>
+            </ee:variables>
+        </ee:transform>
+        <flow-ref doc:name="Flow Ref: get-team-by-id-main-flow" doc:id="689dd759-b4e3-4148-b38a-1aa7f83f6f0a" name="get-team-by-id-main-flow" />
+    </flow>
+    <flow name="get:\employees\(id):dvt-sys-employees-config">
+        <ee:transform doc:id="e2c9cb80-7949-45f2-969d-2437dc06822d">
+            <ee:variables>
+                <ee:set-variable variableName="employeeId"><![CDATA[%dw 2.0
+output application/java
+---
+attributes.uriParams.'id']]></ee:set-variable>
+            </ee:variables>
+        </ee:transform>
+        <flow-ref doc:name="Flow Ref: get-employee-by-id-main-flow" doc:id="0c4c1523-e14d-4357-babc-1879e125a087" name="get-employee-by-id-main-flow" />
+    </flow>
+</mule>

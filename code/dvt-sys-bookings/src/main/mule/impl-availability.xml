@@ -1,0 +1,207 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:json-logger="http://www.mulesoft.org/schema/mule/json-logger" xmlns:db="http://www.mulesoft.org/schema/mule/db"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/json-logger http://www.mulesoft.org/schema/mule/json-logger/current/mule-json-logger.xsd">
+	
+	<flow name="get-availability-main-flow" doc:id="79034a75-26b1-4afd-b97e-c2fcb643061f" >
+		<ee:transform doc:name="Update logMessage" doc:id="ad58f818-97ce-49a1-b7de-e00f7f0453e7">
+			<ee:message />
+			<ee:variables>
+				<ee:set-variable variableName="logMessage"><![CDATA[%dw 2.0
+output application/java
+---
+{
+	message: "FLOW: get-availability",
+	content: "Retrieving availability for $(vars.date) at location $(vars.locationId)."
+}]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<json-logger:logger doc:name="Logger Flow" doc:id="6a09da45-8f82-4f2a-8751-68270355f3cf" config-ref="json-logger-config" message="#[vars.logMessage.message]" tracePoint="FLOW" priority='#["${json.logger.priority.flow}"]' category="${json.logger.category.flow}">
+			<json-logger:content><![CDATA[#[vars.logMessage.content]]]></json-logger:content>
+		</json-logger:logger>
+		<ee:transform doc:name="Transform Message" doc:id="f0aa1b03-b716-4dc8-9f87-1ed00b6b229c" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="select_query" ><![CDATA[%dw 2.0
+output application/json
+---
+if (vars.roomId != null)
+	"SELECT * from availability where date=:date and location_id=:location_id and room_id=:room_id;"
+else 
+	"SELECT * from availability where date=:date and location_id=:location_id;"]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<db:select doc:name="Select from availability" doc:id="f8e81735-c4d1-4022-b72d-ca4bd58d336e" config-ref="database-config">
+			<db:sql><![CDATA[#[vars.select_query]]]></db:sql>
+			<db:input-parameters><![CDATA[#[{date: vars.date, location_id: vars.locationId, room_id: vars.roomId}]]]></db:input-parameters>
+		</db:select>
+		<choice doc:name="Choice" doc:id="f1d535c3-4de9-4c71-ad59-d1dd024d0ca8" >
+			<when expression="#[sizeOf(payload)&gt;0]">
+				<ee:transform doc:name="Transform Message" doc:id="69c84473-70e5-4e3e-ba05-289ddcfa693a">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+using (availability = payload[0]) {
+	id: availability.availability_id,
+    date: availability.date,
+    locationId: availability.location_id,
+    totalAvailableDesks: availability.total_available_desks,
+    currentAvailableDesks: availability.current_available_desks
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+				<ee:transform doc:name="Update logMessage" doc:id="047a956a-cac1-4ca1-ae3f-70b7774f3b6b">
+			<ee:message />
+			<ee:variables>
+				<ee:set-variable variableName="logMessage"><![CDATA[%dw 2.0
+output application/java
+---
+{
+	message: "FLOW: get-availability",
+	content: "Retrieved availability for $(vars.date) at location $(vars.locationId)."
+}]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+			</when>
+			<otherwise >
+				<ee:transform doc:name="Transform Message" doc:id="879bbf17-070b-4578-9335-85a1aa7e54d3">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+	errorCode: "NOT_FOUND",
+	errorMessage: "Availability for $(vars.date) at location $(vars.locationId) not found."
+}]]></ee:set-payload>
+					</ee:message>
+					<ee:variables >
+						<ee:set-variable variableName="httpStatus" ><![CDATA[404]]></ee:set-variable>
+					</ee:variables>
+				</ee:transform>
+				<ee:transform doc:name="Update logMessage" doc:id="b9f5df36-14f5-40a8-9d45-2e262b5127a8" >
+					<ee:message />
+					<ee:variables >
+						<ee:set-variable variableName="logMessage" ><![CDATA[%dw 2.0
+output application/java
+---
+{
+	message: "FLOW: get-availability",
+	content: "Availability for $(vars.date) at location $(vars.locationId) not found."
+}]]></ee:set-variable>
+					</ee:variables>
+				</ee:transform>
+			</otherwise>
+		</choice>
+		<json-logger:logger doc:name="Logger Flow" doc:id="5a4edeb5-28ae-4f5a-ad28-42c6317c1786" config-ref="json-logger-config" message="#[vars.logMessage.message]" tracePoint="FLOW" priority='#["${json.logger.priority.flow}"]' category="${json.logger.category.flow}" >
+			<json-logger:content ><![CDATA[#[vars.logMessage.content]]]></json-logger:content>
+		</json-logger:logger>
+	</flow>
+	
+	<flow name="update-availability-main-flow" doc:id="b4a59cac-72fb-440b-a49b-9917a7ed08a9" >
+		<ee:transform doc:name="Update logMessage" doc:id="7ef0550e-032b-4ad5-99aa-de016e296514">
+			<ee:message />
+			<ee:variables>
+				<ee:set-variable variableName="logMessage"><![CDATA[%dw 2.0
+output application/java
+---
+{
+	message: "FLOW: update-availability",
+	content: "Inserting availability to DB."
+}]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<json-logger:logger doc:name="Logger Flow" doc:id="e1457ab7-1a0c-4ca6-8819-205d373340ee" config-ref="json-logger-config" message="#[vars.logMessage.message]" tracePoint="FLOW" priority='#["${json.logger.priority.flow}"]' category="${json.logger.category.flow}">
+			<json-logger:content><![CDATA[#[vars.logMessage.content]]]></json-logger:content>
+		</json-logger:logger>
+		<db:insert doc:name="Insert into availability" doc:id="da0a9d83-4c64-4478-b2b6-83541916fdcc" config-ref="database-config">
+			<db:sql><![CDATA[INSERT INTO `availability` (`date`,`location_id`,`total_available_desks`,`current_available_desks`,`room_id`) 
+VALUES (:date, :location_id, :total_available_desks, :current_available_desks, :room_id);]]></db:sql>
+			<db:input-parameters><![CDATA[#[{date:payload.date, location_id:payload.locationId, total_available_desks:payload.totalAvailableDesks, current_available_desks:payload.currentAvailableDesks, room_id:payload.roomId}]]]></db:input-parameters>
+		</db:insert>
+		<ee:transform doc:name="Transform Message" doc:id="a49ade58-f8d9-44dd-b7fd-0f0b02b4a180">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+	code: "CREATED",
+	message: "Resource Created"
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<ee:transform doc:name="Update logMessage" doc:id="ae667350-e486-4e23-845a-ff20f22109c9">
+			<ee:message />
+			<ee:variables>
+				<ee:set-variable variableName="logMessage"><![CDATA[%dw 2.0
+output application/java
+---
+{
+	message: "FLOW: update-availability",
+	content: "Availability inserted to DB."
+}]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<json-logger:logger doc:name="Logger Flow" doc:id="fcff9a81-69ab-429b-9708-d038d4806005" config-ref="json-logger-config" message="#[vars.logMessage.message]" tracePoint="FLOW" priority='#["${json.logger.priority.flow}"]' category="${json.logger.category.flow}" >
+			<json-logger:content ><![CDATA[#[vars.logMessage.content]]]></json-logger:content>
+		</json-logger:logger>
+	</flow>
+	
+	<flow name="update-availability-by-id-main-flow" doc:id="6981ce3c-8049-407b-bd93-c70205c4eab9" >
+		<ee:transform doc:name="Update logMessage" doc:id="d9706a75-bdff-47de-8f02-ef1558db9162">
+			<ee:message />
+			<ee:variables>
+				<ee:set-variable variableName="logMessage"><![CDATA[%dw 2.0
+output application/java
+---
+{
+	message: "FLOW: update-availability-by-id",
+	content: "Update availability $(vars.availabilityId) in the DB."
+}]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<json-logger:logger doc:name="Logger Flow" doc:id="9d702189-b0c6-49b5-8ab7-c2d0e0280860" config-ref="json-logger-config" message="#[vars.logMessage.message]" tracePoint="FLOW" priority='#["${json.logger.priority.flow}"]' category="${json.logger.category.flow}">
+			<json-logger:content><![CDATA[#[vars.logMessage.content]]]></json-logger:content>
+		</json-logger:logger>
+		<db:update doc:name="Update availability" doc:id="417abb84-9735-437c-a24c-28448604216c" config-ref="database-config">
+			<db:sql><![CDATA[UPDATE `availability` SET current_available_desks=:current_available_desks WHERE availability_id=:availability_id]]></db:sql>
+			<db:input-parameters><![CDATA[#[{current_available_desks:payload.currentAvailableDesks, availability_id:vars.availabilityId}]]]></db:input-parameters>
+		</db:update>
+		<ee:transform doc:name="Transform Message" doc:id="112eaff2-0f2e-4e8c-843b-4ba37a0bf7fd">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+	code: "SUCCESS",
+	message: "Resource Updated"
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<ee:transform doc:name="Update logMessage" doc:id="1473e27a-feb0-445f-a6bb-96fe6935e426">
+			<ee:message />
+			<ee:variables>
+				<ee:set-variable variableName="logMessage"><![CDATA[%dw 2.0
+output application/java
+---
+{
+	message: "FLOW: update-availability-by-id",
+	content: "Availability $(vars.availabilityId) updated in the DB."
+}]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<json-logger:logger doc:name="Logger Flow" doc:id="a0bf6636-02a3-4e68-8560-8d2361624a53" config-ref="json-logger-config" message="#[vars.logMessage.message]" tracePoint="FLOW" priority='#["${json.logger.priority.flow}"]' category="${json.logger.category.flow}" >
+			<json-logger:content ><![CDATA[#[vars.logMessage.content]]]></json-logger:content>
+		</json-logger:logger>
+	</flow>
+
+</mule>

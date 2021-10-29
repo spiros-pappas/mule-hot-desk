@@ -1,0 +1,167 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:json-logger="http://www.mulesoft.org/schema/mule/json-logger" xmlns:os="http://www.mulesoft.org/schema/mule/os"
+	xmlns:file="http://www.mulesoft.org/schema/mule/file"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd
+http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/current/mule-os.xsd
+http://www.mulesoft.org/schema/mule/json-logger http://www.mulesoft.org/schema/mule/json-logger/current/mule-json-logger.xsd">
+	
+	<flow name="booking-status-main-flow" doc:id="af05304e-7804-42c4-8df3-a97982c44ac4" >
+		<ee:transform doc:name="set variables" doc:id="ee823d13-f7b7-4f12-9e4a-b735f998ce16" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="inPayload" ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-variable>
+				<ee:set-variable variableName="date" ><![CDATA[%dw 2.0
+output application/java
+---
+payload.dates[0]]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<flow-ref doc:name="Flow Ref: get-employee-by-email-sub-flow" doc:id="1cac7197-1d60-4aba-bde5-5b91ce268887" name="get-employee-by-email-sub-flow" target="employee"/>
+		<try doc:name="Try" doc:id="50defecd-2010-431a-801f-9fd7e756ec9b" >
+			<flow-ref doc:name="Flow Ref: get-intention-by-employee-id-sub-flow" doc:id="89d4e528-2520-4612-b7b8-8d979dda1489" name="get-intention-by-employee-id-sub-flow" target="intention" />
+			<error-handler >
+				<on-error-continue enableNotifications="false" logException="false" doc:name="On Error Continue" doc:id="63fa0a1b-be10-47ce-97b1-79d88a468ce3" type="HTTP:NOT_FOUND">
+					<ee:transform doc:name="Transform Message" doc:id="2e4e9c0a-8204-4e7d-a0df-d99ea8554bd4" >
+						<ee:message >
+						</ee:message>
+						<ee:variables >
+							<ee:set-variable variableName="intention" ><![CDATA[%dw 2.0
+output application/java
+---
+"NULL"]]></ee:set-variable>
+						</ee:variables>
+					</ee:transform>
+				</on-error-continue>
+			</error-handler>
+		</try>
+		<try doc:name="Try" doc:id="2debc6dc-f0ec-49f8-a1ee-d410605df18f" >
+			<flow-ref doc:name="Flow Ref: get-bookings-sub-flow" doc:id="0310266e-ba21-4f18-b5b7-b865ab022c5e" name="get-bookings-sub-flow" target="booking" />
+			<error-handler >
+				<on-error-continue enableNotifications="false" logException="false" doc:name="On Error Continue" doc:id="b000d20c-b0a0-406f-a582-7c3e754a3989" type="HTTP:NOT_FOUND">
+					<ee:transform doc:name="Transform Message" doc:id="607e0746-2fdc-4458-b70a-66b240d4981f" >
+						<ee:message />
+						<ee:variables >
+							<ee:set-variable variableName="booking" ><![CDATA[%dw 2.0
+output application/java
+---
+"NULL"]]></ee:set-variable>
+						</ee:variables>
+					</ee:transform>
+				</on-error-continue>
+			</error-handler>
+		</try>
+		<ee:transform doc:name="Response" doc:id="0af8f345-226a-4524-90ac-d4a17c52d5a7">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+var response = 
+	if (vars.intention == "NULL")
+		"You have not requested a hotdesk for $(vars.date)."
+	else if (vars.intention.status[0] == "CANCELLED")
+		"Your booking request for $(vars.date) is cancelled."
+	else if ((vars.intention.status[0] == "NEW") and (vars.booking == "NULL"))
+		"Your booking for $(vars.date) is confirmed. A desk will be assigned to you later in the day."
+	else if ((vars.intention.status[0] == "NEW") and (vars.booking != "NULL"))
+		"Your booking for $(vars.date) is confirmed. Your desk is $(vars.booking.deskId[0])."
+	else
+		"Could not check the status of your booking request."
+---
+{
+    code: "Success",
+    message: response
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+	</flow>
+	<sub-flow name="get-bookings-sub-flow" doc:id="38e1cd23-6e17-40a9-a763-d23f6b88172a" >
+		<ee:transform doc:name="Build Request" doc:id="83edb42b-f063-45ba-8741-4e12805e41a5">
+			<ee:message>
+			</ee:message>
+			<ee:variables>
+				<ee:set-variable variableName="request"><![CDATA[%dw 2.0
+output application/java
+var protocol = lower(p('dvt-sys-bookings.protocol'))
+var host = p('dvt-sys-bookings.host')
+var port = p('dvt-sys-bookings.port')
+var path = "bookings"
+---
+{
+	protocol: protocol,
+	method: "GET",
+	endpoint: "$(protocol)://$(host):$(port)/$(path)",
+	transportHeaders: {
+		client_id: p('secure::dvt-sys-bookings.header.client_id'),
+		client_secret: p('secure::dvt-sys-bookings.header.client_secret')
+	},
+	uriParameters: {},
+	queryParameters: {
+		date: vars.date,
+		employeeId: vars.employee.id
+	}
+}]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<ee:transform doc:name="Update logMessage" doc:id="b81ec44b-7bfc-4133-89d4-e73780999789">
+			<ee:message />
+			<ee:variables>
+				<ee:set-variable variableName="logMessage"><![CDATA[%dw 2.0
+output application/json
+var bsName = "dvt-sys-bookings"
+---
+{
+	message: "BEFORE_REQUEST: HTTP Request to $(bsName)",
+	content: {
+		method: vars.request.method,
+		endpoint: vars.request.endpoint,
+		transportHeaders: vars.request.transportHeaders,
+		uriParameters: vars.request.uriParameters,
+		queryParameters: vars.request.queryParameters,
+		payload: message.payload
+	}
+}]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<json-logger:logger doc:name="Logger Before Request" doc:id="ecb2fe8e-3e69-4318-8a88-71e286fe728c" config-ref="json-logger-config" message="#[vars.logMessage.message]" tracePoint="BEFORE_REQUEST" priority='#["${json.logger.priority.before-request}"]' category="${json.logger.category.before-request}">
+			<json-logger:content><![CDATA[#[import modules::JSONLoggerModule 
+output application/json
+---
+vars.logMessage.content]]]></json-logger:content>
+		</json-logger:logger>
+		<http:request method="#[vars.request.method]" doc:name="RESTful API" doc:id="4f5a601a-a973-4872-bb80-dd0fdd6d6879" config-ref="http-request-config" url="#[vars.request.endpoint]" sendCorrelationId="ALWAYS" correlationId="#[correlationId]" responseTimeout="#[vars.request.timeout.response]">
+			<reconnect frequency="${request.reconnection.frequency}" count="${request.reconnection.attempts}" />
+			<http:headers><![CDATA[#[vars.request.transportHeaders]]]></http:headers>
+			<http:uri-params><![CDATA[#[vars.request.uriParameters]]]></http:uri-params>
+			<http:query-params><![CDATA[#[vars.request.queryParameters]]]></http:query-params>
+		</http:request>
+		<ee:transform doc:name="Update logMessage" doc:id="1707e1e8-7d85-4738-a991-a37db5b45f31">
+			<ee:message />
+			<ee:variables>
+				<ee:set-variable variableName="logMessage"><![CDATA[%dw 2.0
+output application/json
+var bsName = "dvt-sys-bookings"
+---
+{
+	message: "AFTER_REQUEST: HTTP Response from $(bsName)",
+	content: {
+		attributes: message.attributes,
+		payload: message.payload
+	}
+}]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<json-logger:logger doc:name="Logger After Request" doc:id="4b15c926-f278-4772-ac1c-e51b5c66d83f" config-ref="json-logger-config" message="#[vars.logMessage.message]" tracePoint="AFTER_REQUEST" priority='#["${json.logger.priority.after-request}"]' category="${json.logger.category.after-request}">
+			<json-logger:content><![CDATA[#[import modules::JSONLoggerModule 
+output application/json
+---
+vars.logMessage.content]]]></json-logger:content>
+		</json-logger:logger>
+	</sub-flow>
+</mule>

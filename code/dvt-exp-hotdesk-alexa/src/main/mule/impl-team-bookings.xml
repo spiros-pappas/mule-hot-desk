@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:json-logger="http://www.mulesoft.org/schema/mule/json-logger"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/json-logger http://www.mulesoft.org/schema/mule/json-logger/current/mule-json-logger.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd">
+	<flow name="team-bookings-sub-flow" doc:id="2ab104b9-5999-450b-b9ac-6e39b0b39bdb" >
+		<ee:transform doc:name="Build Request" doc:id="75635d93-f27e-4854-8b3b-316702eb1389">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+
+var currentDate = now() as Date {format: "yyyy-MM-dd"}
+var requestedDay = payload.request.intent.slots.dayOfWeek.value
+
+fun getDateFromDayOfWeek(requestDay,requestDate) =
+    if (("$(requestDay), $(requestDate)" as Date {format: "EEEE, yyyy-MM-dd"} default "")=="")
+        getDateFromDayOfWeek(requestDay,requestDate as Date {format: "yyyy-MM-dd"} + |P1D|)
+    else requestDate
+
+var startDate = (payload.request.intent.slots.startDate.value as Date) default currentDate
+var endDate = (payload.request.intent.slots.endDate.value as Date) default currentDate
+var numOfDays = daysBetween(startDate, endDate)
+
+var intentionDates = 
+	if (lower(payload.request.intent.slots.dayOfWeek.value) == "tomorrow")
+		[] as Array ++ [(currentDate as Date {format: "yyyy-MM-dd"} + |P1D|)]
+	else if (payload.request.intent.slots.dayOfWeek.value != null)
+		[] as Array ++ [getDateFromDayOfWeek(requestedDay,currentDate)]
+	else 
+		(0 to numOfDays) map (startDate + ("P$($$)D" as Period))
+
+---
+
+{
+    employeeEmail: payload.userId,
+    dates: intentionDates
+}]]></ee:set-payload>
+			</ee:message>
+			<ee:variables>
+				<ee:set-variable variableName="request"><![CDATA[%dw 2.0
+output application/java
+var protocol = lower(p('dvt-prc-intention.protocol'))
+var host = p('dvt-prc-intention.host')
+var port = p('dvt-prc-intention.port')
+var path = "team-bookings"
+---
+{
+	protocol: protocol,
+	method: "POST",
+	endpoint: "$(protocol)://$(host):$(port)/$(path)",
+	transportHeaders: {
+		client_id: p('secure::dvt-prc-intention.header.client_id'),
+		client_secret: p('secure::dvt-prc-intention.header.client_secret')
+	},
+	uriParameters: {},
+	queryParameters: {}
+}]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<ee:transform doc:name="Update logMessage" doc:id="94265661-2874-41f5-9790-a4083fa5c025" >
+			<ee:message />
+			<ee:variables >
+				<ee:set-variable variableName="logMessage" ><![CDATA[%dw 2.0
+output application/json
+var bsName = "dvt-prc-intention"
+---
+{
+	message: "BEFORE_REQUEST: HTTP Request to $(bsName)",
+	content: {
+		method: vars.request.method,
+		endpoint: vars.request.endpoint,
+		transportHeaders: vars.request.transportHeaders,
+		uriParameters: vars.request.uriParameters,
+		queryParameters: vars.request.queryParameters,
+		payload: message.payload
+	}
+}]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<json-logger:logger doc:name="Logger Before Request" doc:id="ff7da1aa-3b06-4491-84a4-42971c41e8c9" config-ref="json-logger-config" message="#[vars.logMessage.message]" tracePoint="BEFORE_REQUEST" priority='#["${json.logger.priority.before-request}"]' category="${json.logger.category.before-request}" >
+			<json-logger:content ><![CDATA[#[import modules::JSONLoggerModule 
+output application/json
+---
+vars.logMessage.content]]]></json-logger:content>
+		</json-logger:logger>
+		<http:request method="#[vars.request.method]" doc:name="RESTful API" doc:id="34ce0fec-cb09-48fd-9dc0-24007f355a59" config-ref="http-request-config" url="#[vars.request.endpoint]" sendCorrelationId="ALWAYS" correlationId="#[correlationId]" responseTimeout="#[vars.request.timeout.response]" >
+			<reconnect frequency="${request.reconnection.frequency}" count="${request.reconnection.attempts}" />
+			<http:headers ><![CDATA[#[vars.request.transportHeaders]]]></http:headers>
+			<http:uri-params ><![CDATA[#[vars.request.uriParameters]]]></http:uri-params>
+			<http:query-params ><![CDATA[#[vars.request.queryParameters]]]></http:query-params>
+		</http:request>
+		<ee:transform doc:name="Update logMessage" doc:id="2fdb9fab-ec85-45c3-97a2-f361ff397a38" >
+			<ee:message />
+			<ee:variables >
+				<ee:set-variable variableName="logMessage" ><![CDATA[%dw 2.0
+output application/json
+var bsName = "dvt-prc-intention"
+---
+{
+	message: "AFTER_REQUEST: HTTP Response from $(bsName)",
+	content: {
+		attributes: message.attributes,
+		payload: message.payload
+	}
+}]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<json-logger:logger doc:name="Logger After Request" doc:id="88c27554-d59e-4f4b-b5ce-72afe1d3a81c" config-ref="json-logger-config" message="#[vars.logMessage.message]" tracePoint="AFTER_REQUEST" priority='#["${json.logger.priority.after-request}"]' category="${json.logger.category.after-request}" >
+			<json-logger:content ><![CDATA[#[import modules::JSONLoggerModule 
+output application/json
+---
+vars.logMessage.content]]]></json-logger:content>
+		</json-logger:logger>
+	</flow>
+</mule>

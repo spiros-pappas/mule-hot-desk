@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:json-logger="http://www.mulesoft.org/schema/mule/json-logger"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:tls="http://www.mulesoft.org/schema/mule/tls"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns:api-gateway="http://www.mulesoft.org/schema/mule/api-gateway" xmlns:twilio="http://www.mulesoft.org/schema/mule/twilio"
+	xmlns:secure-properties="http://www.mulesoft.org/schema/mule/secure-properties"
+	xmlns:email="http://www.mulesoft.org/schema/mule/email" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd 
+http://www.mulesoft.org/schema/mule/tls http://www.mulesoft.org/schema/mule/tls/current/mule-tls.xsd 
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd 
+http://www.mulesoft.org/schema/mule/email http://www.mulesoft.org/schema/mule/email/current/mule-email.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/secure-properties http://www.mulesoft.org/schema/mule/secure-properties/current/mule-secure-properties.xsd
+http://www.mulesoft.org/schema/mule/twilio http://www.mulesoft.org/schema/mule/twilio/current/mule-twilio.xsd
+http://www.mulesoft.org/schema/mule/api-gateway http://www.mulesoft.org/schema/mule/api-gateway/current/mule-api-gateway.xsd
+http://www.mulesoft.org/schema/mule/json-logger http://www.mulesoft.org/schema/mule/json-logger/current/mule-json-logger.xsd">
+
+	<global-property name="env" value="local"/>
+	
+	<global-property doc:name="Global Property" doc:id="32da729b-d21b-442d-8c1f-27b2ef3c8cf5" name="secure.key" value="${secure.key}" />
+	<secure-properties:config name="secure-properties-config" doc:name="Secure Properties Config" doc:id="2366b0be-9fae-4a24-ae27-2efb5942dc12" file="configs/${env}.yaml" key="${secure.key}" />
+		
+	<configuration-properties doc:name="environmental-properties" doc:id="3ad88fd4-b8cf-4d11-bd80-27aa937fc06c" file="configs/${env}.yaml"/>
+	<configuration-properties doc:name="common-properties" doc:id="6e18e707-25ba-4bec-a7d5-216d75b5c012" file="configs/common.yaml"/>
+	<configuration-properties doc:name="pom-properties" doc:id="5497b1e3-2ade-4de9-bfd4-ad350f28107e" file="configs/pom.yaml"/>
+	
+	<configuration doc:name="global-error-handler" doc:id="8e17214c-6dc5-44fb-a00d-5d864b38da19" defaultErrorHandler-ref="globalError_Handler"/>
+	
+	<json-logger:config name="json-logger-config" doc:name="JSON Logger Config" doc:id="116416bb-cd69-4f3b-bd0e-6f713ac18d5c" environment="${env}" applicationName="${application.artifactId}" applicationVersion="${application.version}" disabledFields="${json.logger.disabledFields}" contentFieldsDataMasking="${json.logger.contentFieldsDataMasking}" />
+	<http:listener-config name="http-listener-config">
+		<http:listener-connection host="0.0.0.0" port="${listener.port}"/>
+	</http:listener-config>
+	<api-gateway:autodiscovery apiId="${autodiscovery.id}" ignoreBasePath="true" doc:name="API Autodiscovery" doc:id="c86bb0ca-5f1f-4b92-8d02-cb23fd583f8a" flowRef="dvt-sys-notification-main"/>
+	
+	<email:smtp-config name="email-smtp-config" doc:name="Email SMTP" doc:id="2de21cf2-78e8-469e-aedb-1b9e661ec5f9" >
+		<email:smtp-connection host="smtp.gmail.com" port="587" user="${secure::email.username}" password="${secure::email.password}">
+			<email:properties >
+				<email:property key="mail.smtp.starttls.enable" value="true" />
+			</email:properties>
+		</email:smtp-connection>
+	</email:smtp-config>
+	
+	<twilio:config name="Twilio_Connector_Config" doc:name="Twilio Connector Config" doc:id="0f6f81c5-36d6-4ef2-9d0a-39867cc31175" >
+		<twilio:account-sid-auth-token-connection username="${secure::twilio.username}" password="${secure::twilio.password}" />
+	</twilio:config>
+	
+	<error-handler name="globalError_Handler" doc:id="293b1625-dc88-4e4e-93e2-e09c9bb6bb27" >
+		<on-error-propagate enableNotifications="true" logException="false" doc:name="On Error Propagate" doc:id="eb794bac-8250-4c16-b98e-9f0e3e0c6d66" type="APIKIT:BAD_REQUEST, APIKIT:NOT_FOUND, APIKIT:METHOD_NOT_ALLOWED, APIKIT:NOT_ACCEPTABLE, APIKIT:UNSUPPORTED_MEDIA_TYPE, APIKIT:NOT_IMPLEMENTED, CONSOLE:NOT_FOUND">
+			<ee:transform doc:name="Transform Message" doc:id="d4b0d36c-8c34-4b63-95e1-bef04a6bee70">
+				<ee:message>
+					<ee:set-payload ><![CDATA[%dw 2.0 
+output application/json
+---
+{
+	errorCode: error.errorType.identifier,
+	errorMessage: error.description
+}]]></ee:set-payload>
+				</ee:message>
+				<ee:variables>
+					<ee:set-variable variableName="httpStatus"><![CDATA[if (error.errorType.identifier == "BAD_REQUEST") 
+400
+else if (error.errorType.identifier == "NOT_FOUND")
+404
+else if (error.errorType.identifier == "METHOD_NOT_ALLOWED")
+405
+else if (error.errorType.identifier == "NOT_ACCEPTABLE")
+406
+else if (error.errorType.identifier == "UNSUPPORTED_MEDIA_TYPE")
+415
+else if (error.errorType.identifier == "NOT_IMPLEMENTED")
+501
+else
+500
+]]></ee:set-variable>
+				</ee:variables>
+			</ee:transform>
+			<json-logger:logger doc:name="Logger Exception" doc:id="c5e96bb5-7447-46ec-bfc6-e981e07656e1" config-ref="json-logger-config" message="EXCEPTION: Global Error Handler" tracePoint="EXCEPTION" priority='#["${json.logger.priority.exception}"]' category="${json.logger.category.exception}" />
+		</on-error-propagate>
+		<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="ca12c6b5-2819-4610-a43d-cd8d7e373f59" >
+			<ee:transform doc:name="Transform Message" doc:id="7f0e57c4-a6d8-44e5-9361-87f954775ecb">
+				<ee:message>
+					<ee:set-payload><![CDATA[%dw 2.0 
+output application/json
+---
+{
+	errorCode: 'FAILED',
+	errorMessage: error.description
+}]]></ee:set-payload>
+				</ee:message>
+				<ee:variables>
+					<ee:set-variable variableName="httpStatus"><![CDATA[500]]></ee:set-variable>
+				</ee:variables>
+			</ee:transform>
+			<json-logger:logger doc:name="Logger Exception" doc:id="7a44e2bd-e8ee-4261-8810-5982d63c555c" config-ref="json-logger-config" message="EXCEPTION: Global Error Handler" tracePoint="EXCEPTION" priority='#["${json.logger.priority.exception}"]' category="${json.logger.category.exception}" />
+		</on-error-continue>
+	</error-handler>
+	
+</mule>

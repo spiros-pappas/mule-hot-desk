@@ -1,0 +1,188 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:json-logger="http://www.mulesoft.org/schema/mule/json-logger"
+	xmlns:db="http://www.mulesoft.org/schema/mule/db"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd 
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/json-logger http://www.mulesoft.org/schema/mule/json-logger/current/mule-json-logger.xsd">
+	<flow name="get-employment-by-id-main-flow" doc:id="d902d6f2-ea60-41d0-a9cc-195ed7b6531d" >
+		<ee:transform doc:name="Update logMessage" doc:id="c48d68c0-1792-4b90-9a68-d54ec5ea0212">
+			<ee:message />
+			<ee:variables>
+				<ee:set-variable variableName="logMessage"><![CDATA[%dw 2.0
+output application/java
+---
+{
+	message: "FLOW: get-employment-by-id",
+	content: "Retrieving employment details with id $(vars.employmentId)"
+}]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<json-logger:logger doc:name="Logger Flow" doc:id="ccf938ee-8b04-420a-a557-fa0ff1da9d5f" config-ref="json-logger-config" message="#[vars.logMessage.message]" tracePoint="FLOW" priority='#["${json.logger.priority.flow}"]' category="${json.logger.category.flow}">
+			<json-logger:content><![CDATA[#[vars.logMessage.content]]]></json-logger:content>
+		</json-logger:logger>
+		<db:select doc:name="Select from employments" doc:id="fe2b8d8f-3e9c-4ee6-90b9-069e873bd1f9" config-ref="database-config">
+			<db:sql ><![CDATA[select *
+from employments 
+where id=:employmentId;]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{employmentId: vars.employmentId}]]]></db:input-parameters>
+		</db:select>
+		<choice doc:name="Choice" doc:id="0661aa06-ed48-4aaa-ba6f-6c727f7e5587" >
+			<when expression="#[sizeOf(payload)&gt;0]">
+				<ee:transform doc:name="Transform Message" doc:id="ad073784-4dc3-4781-ac5d-521c38f13c59">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+using (employment = payload[0]) {
+  id: employment.id,
+  employeeId: employment.employee_id,
+  jobTitle: employment.job_title,
+  payRate: employment.pay_rate,
+  payPeriod: employment.pay_period,
+  payFrequency: employment.pay_frequency,
+  payCurrency: employment.pay_currency,
+  flsaStatus: employment.flsa_status,
+  effectiveDate: employment.effective_date,
+  employmentType: employment.employment_type
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+				<ee:transform doc:name="Update logMessage" doc:id="0c4ed0e7-55f6-47ca-ad33-e1329cffdc65">
+			<ee:message />
+			<ee:variables>
+				<ee:set-variable variableName="logMessage"><![CDATA[%dw 2.0
+output application/java
+---
+{
+	message: "FLOW: get-employment-by-id",
+	content: "Retrieved details for employee with id $(vars.employmentId)"
+}]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+			</when>
+			<otherwise >
+				<ee:transform doc:name="Transform Message" doc:id="3f3a9ae0-141f-4cd4-b745-76296cd98eb1">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+	errorCode: "NOT_FOUND",
+	errorMessage: "Employment with id $(vars.employmentId) not found."
+}]]></ee:set-payload>
+					</ee:message>
+					<ee:variables >
+						<ee:set-variable variableName="httpStatus" ><![CDATA[404]]></ee:set-variable>
+					</ee:variables>
+				</ee:transform>
+				<ee:transform doc:name="Update logMessage" doc:id="e764337b-df2f-47f6-9ece-b02d5722e4ba" >
+					<ee:message />
+					<ee:variables >
+						<ee:set-variable variableName="logMessage" ><![CDATA[%dw 2.0
+output application/java
+---
+{
+	message: "FLOW: get-employment-by-id",
+	content: "Employment with id $(vars.employmentId) not found."
+}]]></ee:set-variable>
+					</ee:variables>
+				</ee:transform>
+			</otherwise>
+		</choice>
+		<json-logger:logger doc:name="Logger Flow" doc:id="ce51ff03-8097-4f2a-b2db-f6ddae4192ab" config-ref="json-logger-config" message="#[vars.logMessage.message]" tracePoint="FLOW" priority='#["${json.logger.priority.flow}"]' category="${json.logger.category.flow}" >
+			<json-logger:content ><![CDATA[#[vars.logMessage.content]]]></json-logger:content>
+		</json-logger:logger>
+	</flow>
+	<flow name="get-employments-main-flow" doc:id="2a5ca29b-562b-4c2d-8fe0-4e27fa45638c" >
+		<ee:transform doc:name="Update logMessage" doc:id="76333499-224b-4a77-876c-55fc5721e410" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="logMessage" ><![CDATA[%dw 2.0
+output application/java
+---
+{
+	message: "FLOW: get-employments",
+	content: "Retrieving employments details"
+}]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<json-logger:logger doc:name="Logger Flow" doc:id="26738d2d-6150-4bed-9ef1-426c7177860a" config-ref="json-logger-config" message="#[vars.logMessage.message]" tracePoint="FLOW" priority='#["${json.logger.priority.flow}"]' category="${json.logger.category.flow}" >
+			<json-logger:content ><![CDATA[#[vars.logMessage.content]]]></json-logger:content>
+		</json-logger:logger>
+		<db:select doc:name="Select * from employments" doc:id="30411193-3137-42ac-8ef1-4a45a2c77a71" config-ref="database-config" >
+			<db:sql ><![CDATA[select *
+from employments;]]></db:sql>
+		</db:select>
+		<choice doc:name="Choice" doc:id="8d2dea05-b189-49c0-b2b6-10498c4fd6b7" >
+			<when expression="#[sizeOf(payload)&gt;0]" >
+				<ee:transform doc:name="Transform Message" doc:id="b1d8b0e3-cc48-4799-9fe9-6060968f74fa" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload map (employment,index) -> {
+  id: employment.id,
+  employeeId: employment.employee_id,
+  jobTitle: employment.job_title,
+  payRate: employment.pay_rate,
+  payPeriod: employment.pay_period,
+  payFrequency: employment.pay_frequency,
+  payCurrency: employment.pay_currency,
+  flsaStatus: employment.flsa_status,
+  effectiveDate: employment.effective_date,
+  employmentType: employment.employment_type
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<ee:transform doc:name="Update logMessage" doc:id="3205521c-3e73-45d5-a083-778271071aa4" >
+					<ee:message />
+					<ee:variables >
+						<ee:set-variable variableName="logMessage" ><![CDATA[%dw 2.0
+output application/java
+---
+{
+	message: "FLOW: get-employments",
+	content: "Retrieved details for employments"
+}]]></ee:set-variable>
+					</ee:variables>
+				</ee:transform>
+			</when>
+			<otherwise >
+				<ee:transform doc:name="Transform Message" doc:id="df8b5fc5-fd38-40ae-9723-27e1f659d78a" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	errorCode: "NOT_FOUND",
+	errorMessage: "Employments not found."
+}]]></ee:set-payload>
+					</ee:message>
+					<ee:variables >
+						<ee:set-variable variableName="httpStatus" ><![CDATA[404]]></ee:set-variable>
+					</ee:variables>
+				</ee:transform>
+				<ee:transform doc:name="Update logMessage" doc:id="2eb43a45-e991-48d5-9ed9-f32c8819b50d" >
+					<ee:message />
+					<ee:variables >
+						<ee:set-variable variableName="logMessage" ><![CDATA[%dw 2.0
+output application/java
+---
+{
+	message: "FLOW: get-employments",
+	content: "Employments not found."
+}]]></ee:set-variable>
+					</ee:variables>
+				</ee:transform>
+			</otherwise>
+		</choice>
+		<json-logger:logger doc:name="Logger Flow" doc:id="2704819e-9890-4cb3-8936-0700b9c723b2" config-ref="json-logger-config" message="#[vars.logMessage.message]" tracePoint="FLOW" priority='#["${json.logger.priority.flow}"]' category="${json.logger.category.flow}" >
+			<json-logger:content ><![CDATA[#[vars.logMessage.content]]]></json-logger:content>
+		</json-logger:logger>
+	</flow>
+</mule>

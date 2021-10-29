@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>813cde1d-689b-4689-91c2-c9f408772769</groupId>
+  <artifactId>default-error-responses-trait</artifactId>
+  <version>1.0.0</version>
+  <name>default-error-responses-trait</name>
+  <properties>
+    <classifier>raml-fragment</classifier>
+    <main>default-error-responses-trait.raml</main>
+    <originalFormatVersion>1.0</originalFormatVersion>
+    <projectId>892c3401-52cf-49ea-aaa9-e9b127917482</projectId>
+    <branchId>master</branchId>
+    <commitId>3a18106405569c90f62c8d2e9a4fabe9d0bbda5c</commitId>
+    <type>raml-fragment</type>
+    <mainFile>default-error-responses-trait.raml</mainFile>
+  </properties>
+  <dependencies>
+    <dependency>
+      <groupId>813cde1d-689b-4689-91c2-c9f408772769</groupId>
+      <version>1.0.0</version>
+      <artifactId>error-response-datatype</artifactId>
+      <type>zip</type>
+      <classifier>raml-fragment</classifier>
+    </dependency>
+  </dependencies>
+  <repositories>
+    <repository>
+      <id>anypoint-exchange</id>
+      <url>https://maven.anypoint.mulesoft.com/api/v3/maven</url>
+    </repository>
+  </repositories>
+</project>

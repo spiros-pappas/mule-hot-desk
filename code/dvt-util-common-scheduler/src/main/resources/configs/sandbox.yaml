@@ -1,0 +1,38 @@
+# Configuration file for the Sandbox environment
+config.env.filename: "configs.sandbox.yaml"
+
+# Autodiscovery Id
+autodiscovery.id: "17373764"
+
+# Overwrite JSON Logger config
+json:
+  logger:
+    priority:
+      exception: "INFO"
+      before-request: "INFO"
+      after-request: "INFO"
+
+# Common Scheduler API Configuration
+common-scheduler:
+  callback: 
+    protocol: "HTTP"
+    host: "mule-worker-internal-dvt-util-common-scheduler-v1-sandbox.uk-e1.cloudhub.io"
+    port: "${listener.port}"
+    path: "jobs/(jobId)"
+
+# HTTP Request config for job: desk-allocation
+dvt-prc-allocation:
+  protocol: "HTTP"
+  host: "mule-worker-internal-dvt-prc-allocation-v1-sandbox.uk-e1.cloudhub.io"
+  port: "8091"
+  path: "job/desk-allocation"
+  method: "POST"
+  timeout:
+    connection-idle: "3000"
+    response: "120000"
+  reconnection:
+    frequency: "2000"
+    attempts: "2"
+  header:
+    client_id: "18d25607af8f4aca8ad4e9e188a38e7e"
+    client_secret: "![b3Rkv9TaCoSMoY6OIzZco8exQxv6XUbjV1Ps1lJ0XN33TeOEMY3+MyeSLosDZPxM]"

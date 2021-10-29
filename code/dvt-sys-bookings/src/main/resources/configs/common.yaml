@@ -1,0 +1,55 @@
+# Common properties throughout all environments
+config.common.filename: "configs.common.yaml"
+
+# Version Id
+versionId: "${application.versionId}"
+
+# Console config
+apikit.console.disabled: "true"
+
+# JSON Logger config
+json:
+  logger:
+    disabledFields: ""
+    contentFieldsDataMasking: "client_secret,password,passphrase"
+    priority:
+      start: "INFO"
+      end: "INFO"
+      flow: "INFO"
+      exception: "ERROR"
+      before-request: "DEBUG"
+      after-request: "DEBUG"
+      before-transform: "DEBUG"
+      after-transform: "DEBUG"
+    category:
+      prefix: "${application.groupId}.${application.artifactId}"
+      start: "${json.logger.category.prefix}.external"
+      end: "${json.logger.category.prefix}.external"
+      flow: "${json.logger.category.prefix}.external"
+      exception: "${json.logger.category.prefix}.external"
+      before-request: "${json.logger.category.prefix}.internal"
+      after-request: "${json.logger.category.prefix}.internal"
+      before-transform: "${json.logger.category.prefix}.internal"
+      after-transform: "${json.logger.category.prefix}.internal"
+      debug: "${json.logger.category.prefix}.internal"
+
+# HTTP Listener config
+listener:
+  host: "0.0.0.0"
+  port: "8091"
+
+# HTTP Request configuration
+request:
+  timeout:
+    connection-idle: "3000"
+    response: "360000"
+  reconnection:
+    frequency: "3000"
+    attempts: "3"
+  max-connections: "-1"
+  response.buffer.size: "1024"
+
+# Reconnection configuration
+reconnection:
+  frequency: "2000"
+  attempts: "2"

@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:json-logger="http://www.mulesoft.org/schema/mule/json-logger"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/tls http://www.mulesoft.org/schema/mule/tls/current/mule-tls.xsd 
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/json-logger http://www.mulesoft.org/schema/mule/json-logger/current/mule-json-logger.xsd">
+	
+	<!-- HTTP Request No Auth START -->
+	<http:request-config name="config-http-request-no-auth" doc:name="HTTP Request configuration" doc:id="c111e56a-e2c1-4555-ab92-445a795cf1f0" responseTimeout="#[vars.request.timeout.response]">
+		<http:request-connection connectionIdleTimeout="${request.timeout.connection-idle}" maxConnections="${request.max-connections}">
+		</http:request-connection>
+	</http:request-config>
+	<sub-flow name="bs-http-request-no-auth" doc:id="5811b673-01ad-451c-8cfe-3288f2d6225d">
+		<ee:transform doc:name="Update logMessage" doc:id="2462fafd-0ed9-467f-9301-ac6e3c57825b">
+			<ee:message/>
+			<ee:variables>
+				<ee:set-variable variableName="logMessage" ><![CDATA[%dw 2.0
+output application/json
+var name = vars.request.serviceName
+---
+{
+	message: "HTTP Request to $(name)",
+	content: {
+		method: vars.request.method,
+		endpoint: vars.request.endpoint,
+		transportHeaders: vars.request.transportHeaders,
+		uriParameters: vars.request.uriParameters,
+		queryParameters: vars.request.queryParameters,
+		payload: message.payload	
+	}
+}]]></ee:set-variable>
+			
+</ee:variables>
+		</ee:transform>
+		<json-logger:logger doc:name="Logger Before Request" doc:id="7becabd2-c444-4b16-8cd1-cf652b62c45c" config-ref="json-logger-config" tracePoint="BEFORE_REQUEST" message="#[vars.logMessage.message]" category="${json.logger.category.before-request}" priority='#["${json.logger.priority.before-request}"]'>
+			<json-logger:content><![CDATA[#[%dw 2.0
+output application/json
+---
+vars.logMessage.content]]]></json-logger:content>
+		</json-logger:logger>
+		<try doc:name="Try" doc:id="c80dd19c-e510-4441-82c7-dee7d84d61a7">
+			<http:request method="#[vars.request.method]" doc:name="RESTful API" doc:id="4b57882b-397e-4a5c-892b-ac498a90e6b9" config-ref="config-http-request-no-auth" sendCorrelationId="ALWAYS" correlationId="#[correlationId]" url="#[vars.request.endpoint]" responseTimeout="#[vars.request.timeout.response]">
+				<reconnect frequency="${request.reconnection.frequency}" count="${request.reconnection.attempts}"/>
+				<http:body><![CDATA[#[if (vars.request.method == "POST" or vars.request.method == "PATCH" or vars.request.method == "PUT") payload else {}]]]></http:body>
+				<http:headers><![CDATA[#[vars.request.transportHeaders]]]></http:headers>
+				<http:uri-params><![CDATA[#[vars.request.uriParameters]]]></http:uri-params>
+				<http:query-params><![CDATA[#[vars.request.queryParameters]]]></http:query-params>
+			</http:request>
+			<error-handler>
+				<on-error-propagate enableNotifications="true" logException="false" doc:name="On Error Propagate" doc:id="55e8a22e-3fc2-4c62-bdc0-ae0e5d20ba17">
+					<ee:transform doc:name="errorDetails" doc:id="7ccd609a-53c7-400f-8098-e84fdb3411ea">
+						<ee:message/>
+						<ee:variables>
+							<ee:set-variable variableName="errorDetails"><![CDATA[%dw 2.0
+output application/json
+var name = vars.request.serviceName
+---
+{
+	message: "HTTP Error from $(name)",
+	statusCode: error.errorMessage.attributes.statusCode,
+	errorType: error.errorType.identifier,
+	(errorCode: error.errorMessage.payload.errorCode) if (error.errorMessage.payload.errorCode != null),
+	errorMessage: (
+		if (error.errorMessage.payload.errorMessage != null)
+			error.errorMessage.payload.errorMessage
+		else
+			error.description
+	)
+}]]></ee:set-variable>
+						</ee:variables>
+					</ee:transform>
+					<json-logger:logger doc:name="Logger Exception" doc:id="d2af0c2f-24d6-4879-8539-fa631c1390ba" config-ref="json-logger-config" tracePoint="EXCEPTION" category="${json.logger.category.exception}" message="#[vars.errorDetails.message]" priority='#["${json.logger.priority.exception}"]'>
+						<json-logger:content><![CDATA[#[import modules::JSONLoggerModule 
+output application/json
+---
+JSONLoggerModule::stringifyNonJSON(vars.errorDetails)]]]></json-logger:content>
+					</json-logger:logger>
+				</on-error-propagate>
+			</error-handler>
+		</try>
+		<ee:transform doc:name="Update logMessage" doc:id="0401a502-f76d-40c5-8184-2033a000d927">
+			<ee:message/>
+			<ee:variables>
+				<ee:set-variable variableName="logMessage" ><![CDATA[%dw 2.0
+output application/json
+var name = vars.request.serviceName
+var contentLength = message.attributes.headers."content-length" default 0 
+---
+{
+	message: "HTTP Response from $(name)",
+	content: {
+		attributes: message.attributes,
+		payload: (
+			if ((contentLength as Number) == 0)
+				""
+			else if ((contentLength as Number) < 10000)
+				message.payload
+			else 
+				"Not logged because it's too big"
+		)
+	}
+}]]></ee:set-variable>
+			
+</ee:variables>
+		</ee:transform>
+		<json-logger:logger doc:name="Logger After Request" doc:id="33ad1634-000f-419c-9088-0a26582ddd0c" config-ref="json-logger-config" category='${json.logger.category.after-request}' tracePoint="AFTER_REQUEST" message="#[vars.logMessage.message]" priority='#["${json.logger.priority.after-request}"]'>
+			<json-logger:content><![CDATA[#[%dw 2.0
+output application/json
+---
+vars.logMessage.content]]]></json-logger:content>
+		</json-logger:logger>
+	</sub-flow>
+	<!-- HTTP Request No Auth END -->
+	
+	<!-- HTTPS Request No Auth START -->
+	<!-- HTTPS Request No Auth END -->
+	
+	<!-- HTTPS Request Basic Auth START -->
+	<!-- HTTPS Request Basic Auth END -->
+	
+
+	
+	<!-- Web Service SOAP12 No Basic START -->
+	<!-- Web Service SOAP12 Basic Auth END -->
+	
+	<!-- Web Service SOAP11 Basic Auth START -->
+	<!-- Web Service SOAP11 Basic Auth END -->
+	
+</mule>

@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:json-logger="http://www.mulesoft.org/schema/mule/json-logger"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:tls="http://www.mulesoft.org/schema/mule/tls"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns:api-gateway="http://www.mulesoft.org/schema/mule/api-gateway" xmlns:secure-properties="http://www.mulesoft.org/schema/mule/secure-properties"
+	xmlns:db="http://www.mulesoft.org/schema/mule/db"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd 
+http://www.mulesoft.org/schema/mule/tls http://www.mulesoft.org/schema/mule/tls/current/mule-tls.xsd 
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd 
+http://www.mulesoft.org/schema/mule/api-gateway http://www.mulesoft.org/schema/mule/api-gateway/current/mule-api-gateway.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/secure-properties http://www.mulesoft.org/schema/mule/secure-properties/current/mule-secure-properties.xsd
+http://www.mulesoft.org/schema/mule/json-logger http://www.mulesoft.org/schema/mule/json-logger/current/mule-json-logger.xsd">
+	
+	<global-property name="env" value="local"/>
+	
+	<global-property doc:name="Global Property" doc:id="7ff153f7-76f9-49b8-8652-dd9c204ee5ed" name="secure.key" value="${secure.key}" />
+	<secure-properties:config name="secure-properties-config" doc:name="Secure Properties Config" doc:id="65af17ee-b1af-4916-aa29-2f75726895af" file="configs/${env}.yaml" key="${secure.key}" />
+		
+	<configuration-properties doc:name="environmental-properties" doc:id="c5e2c49a-8ecc-4e94-8e1b-e79a06ecc2fa" file="configs/${env}.yaml"/>
+	<configuration-properties doc:name="common-properties" doc:id="a1b04aca-77ad-45f8-9ae9-86cfa1213fb2" file="configs/common.yaml"/>
+	<configuration-properties doc:name="pom-properties" doc:id="d721b401-a5cb-4e22-8d04-38f012a25c45" file="configs/pom.yaml"/>
+	
+	<configuration doc:name="global-error-handler" doc:id="d4a67ecd-deb3-4439-9373-2ff46feff13a" defaultErrorHandler-ref="globalError_Handler"/>
+	
+	<json-logger:config name="json-logger-config" doc:name="JSON Logger Config" doc:id="c4fa9f47-96af-4c7f-a72f-cad67d779986" environment="${env}" applicationName="${application.artifactId}" applicationVersion="${application.version}" disabledFields="${json.logger.disabledFields}" contentFieldsDataMasking="${json.logger.contentFieldsDataMasking}" />
+	<http:listener-config name="http-listener-config">
+		<http:listener-connection host="0.0.0.0" port="${listener.port}"/>
+	</http:listener-config>
+	<api-gateway:autodiscovery apiId="${autodiscovery.id}" ignoreBasePath="true" doc:name="API Autodiscovery" doc:id="b96ba1f3-b47b-4136-902b-f1e3838ce821" flowRef="dvt-sys-bookings-main"/>
+	
+	<db:config name="database-config" doc:name="Database Config" doc:id="ae7b39a0-a238-459a-9495-5fead1a3b103" >
+		<db:my-sql-connection host="${mysqldb.host}" port="${mysqldb.port}" user="${mysqldb.username}" password="${secure::mysqldb.password}" database="${mysqldb.dbname}" />
+	</db:config>
+	
+	<error-handler name="globalError_Handler" doc:id="a8d78a2e-172c-4389-b1b5-7b30ba4eab81" >
+		<on-error-propagate enableNotifications="true" logException="false" doc:name="On Error Propagate" doc:id="e970ac20-e53c-4f2c-a97b-72f6460c987b" type="APIKIT:BAD_REQUEST, APIKIT:NOT_FOUND, APIKIT:METHOD_NOT_ALLOWED, APIKIT:NOT_ACCEPTABLE, APIKIT:UNSUPPORTED_MEDIA_TYPE, APIKIT:NOT_IMPLEMENTED, CONSOLE:NOT_FOUND">
+			<ee:transform doc:name="Transform Message" doc:id="3c4b2a83-b78d-43e8-8b22-4703ca89a4c8">
+				<ee:message>
+					<ee:set-payload ><![CDATA[%dw 2.0 
+output application/json
+---
+{
+	errorCode: error.errorType.identifier,
+	errorMessage: error.description
+}]]></ee:set-payload>
+				</ee:message>
+				<ee:variables>
+					<ee:set-variable variableName="httpStatus"><![CDATA[if (error.errorType.identifier == "BAD_REQUEST") 
+400
+else if (error.errorType.identifier == "NOT_FOUND")
+404
+else if (error.errorType.identifier == "METHOD_NOT_ALLOWED")
+405
+else if (error.errorType.identifier == "NOT_ACCEPTABLE")
+406
+else if (error.errorType.identifier == "UNSUPPORTED_MEDIA_TYPE")
+415
+else if (error.errorType.identifier == "NOT_IMPLEMENTED")
+501
+else
+500
+]]></ee:set-variable>
+				</ee:variables>
+			</ee:transform>
+			<json-logger:logger doc:name="Logger Exception" doc:id="134000c4-87dc-4d2a-9914-1621a74626e3" config-ref="json-logger-config" message="EXCEPTION: Global Error Handler" tracePoint="EXCEPTION" priority='#["${json.logger.priority.exception}"]' category="${json.logger.category.exception}" />
+		</on-error-propagate>
+		<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="4240bdbb-e742-45dc-859c-5a3f25a7a13c" >
+			<ee:transform doc:name="Transform Message" doc:id="b2b0c6d4-13b0-4701-b196-9ed83e4f816c">
+				<ee:message>
+					<ee:set-payload><![CDATA[%dw 2.0 
+output application/json
+---
+{
+	errorCode: 'FAILED',
+	errorMessage: error.description
+}]]></ee:set-payload>
+				</ee:message>
+				<ee:variables>
+					<ee:set-variable variableName="httpStatus"><![CDATA[500]]></ee:set-variable>
+				</ee:variables>
+			</ee:transform>
+			<json-logger:logger doc:name="Logger Exception" doc:id="ac1b870d-e5ae-4c85-b8cf-992904191539" config-ref="json-logger-config" message="EXCEPTION: Global Error Handler" tracePoint="EXCEPTION" priority='#["${json.logger.priority.exception}"]' category="${json.logger.category.exception}" />
+		</on-error-continue>
+	</error-handler>
+	
+</mule>

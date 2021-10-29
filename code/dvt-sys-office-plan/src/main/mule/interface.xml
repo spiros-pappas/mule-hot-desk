@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:json-logger="http://www.mulesoft.org/schema/mule/json-logger" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation=" http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd  http://www.mulesoft.org/schema/mule/json-logger http://www.mulesoft.org/schema/mule/json-logger/current/mule-json-logger.xsd">
+    <apikit:config name="dvt-sys-office-plans-config" api="resource::813cde1d-689b-4689-91c2-c9f408772769:dvt-sys-office-plan:1.0.2:raml:zip:dvt-sys-office-plans.raml" outboundHeadersMapName="outboundHeaders" httpStatusVarName="httpStatus" />
+    <flow name="dvt-sys-office-plans-main">
+        <http:listener config-ref="http-listener-config" path="/*">
+            <http:response statusCode="#[vars.httpStatus default 200]">
+                <http:headers><![CDATA[#[vars.outboundHeaders default {}]]]></http:headers>
+            </http:response>
+            <http:error-response statusCode="#[vars.httpStatus default 500]">
+                <http:body><![CDATA[#[payload]]]></http:body>
+                <http:headers><![CDATA[#[vars.outboundHeaders default {}]]]></http:headers>
+            </http:error-response>
+        </http:listener>
+        <json-logger:logger doc:name="Logger Debug" doc:id="0ce6681f-4fb9-4845-bf6f-98ebeaa02511" config-ref="json-logger-config" message="DEBUG: Inbound HTTP Request" priority="DEBUG" category="${json.logger.category.debug}">
+            <json-logger:content><![CDATA[#[import modules::JSONLoggerModule output application/json ---
+{
+    attributes: JSONLoggerModule::stringifyNonJSON(attributes),
+    payload: JSONLoggerModule::stringifyNonJSON(payload) 
+}]]]></json-logger:content>
+        </json-logger:logger>
+        <ee:transform doc:name="Prepare logMessage" doc:id="ddfd3004-ef94-4c4f-88b5-65df0aa41ea5">
+            <ee:message />
+            <ee:variables>
+                <ee:set-variable variableName="logMessage"><![CDATA[%dw 2.0
+output application/json
+---
+{
+	message: "START: Inbound HTTP Request",
+	content: {
+		remoteAddress: message.attributes.remoteAddress,
+		method: message.attributes.method,
+		requestPath: message.attributes.requestPath,
+		headers: {
+			client_id: message.attributes.headers.client_id,
+			client_secret: message.attributes.headers.client_secret
+		},
+		queryParams: message.attributes.queryParams
+	}
+}]]></ee:set-variable>
+            </ee:variables>
+        </ee:transform>
+        <json-logger:logger doc:name="Logger Start" doc:id="7f1a6fe7-b2fe-4ca4-bd44-6d770ca545dc" config-ref="json-logger-config" message="#[vars.logMessage.message]" priority="#[&quot;${json.logger.priority.start}&quot;]" category="${json.logger.category.start}">
+            <json-logger:content><![CDATA[#[output application/json 
+---
+vars.logMessage.content]]]></json-logger:content>
+        </json-logger:logger>
+        <apikit:router config-ref="dvt-sys-office-plans-config" />
+        <ee:transform doc:name="Update logMessage" doc:id="498c2e2e-e3fa-4d26-bb8f-d5e41277ccda">
+            <ee:message />
+            <ee:variables>
+                <ee:set-variable variableName="logMessage"><![CDATA[%dw 2.0
+output application/json
+---
+{
+	message: "END: Outbound HTTP Response",
+	content: {
+		httpStatus: vars.httpStatus
+	}
+}]]></ee:set-variable>
+            </ee:variables>
+        </ee:transform>
+        <json-logger:logger doc:name="Logger End" doc:id="bbbf4947-e2de-48a6-9d04-3f027047e398" config-ref="json-logger-config" message="#[vars.logMessage.message]" tracePoint="END" priority="#[&quot;${json.logger.priority.end}&quot;]" category="${json.logger.category.end}">
+            <json-logger:content><![CDATA[#[output application/json 
+---
+vars.logMessage.content]]]></json-logger:content>
+        </json-logger:logger>
+        <json-logger:logger doc:name="Logger Debug" doc:id="a79c9fa5-0c12-4379-9afd-06c8e095299b" config-ref="json-logger-config" message="DEBUG: Inbound HTTP Request" tracePoint="END" priority="DEBUG" category="${json.logger.category.debug}" />
+    </flow>
+    <flow name="dvt-sys-office-plans-console">
+        <http:listener config-ref="http-listener-config" path="/console/*">
+            <http:response statusCode="#[vars.httpStatus default 200]">
+                <http:headers><![CDATA[#[vars.outboundHeaders default {}]]]></http:headers>
+            </http:response>
+            <http:error-response statusCode="#[vars.httpStatus default 500]">
+                <http:body><![CDATA[#[payload]]]></http:body>
+                <http:headers><![CDATA[#[vars.outboundHeaders default {}]]]></http:headers>
+            </http:error-response>
+        </http:listener>
+        <set-variable value="${apikit.console.disabled}" doc:name="apikitConsoleDisabled" doc:id="1f968534-8e3f-403b-9670-f4b2b1ad2136" variableName="apikitConsoleDisabled" />
+        <choice doc:name="apikitConsoleDisabled" doc:id="1d07ca44-b864-444b-8f3a-0eb6358a6fb9">
+            <when expression="#[vars.apikitConsoleDisabled == &quot;false&quot;]">
+                <apikit:console config-ref="dvt-sys-office-plans-config" />
+            </when>
+            <otherwise>
+                <raise-error doc:name="Raise error" doc:id="c33e383f-1bd7-4f05-bdbd-885cb4fb2c7e" type="CONSOLE:NOT_FOUND" description="Console is not available." />
+            </otherwise>
+        </choice>
+    </flow>
+    <flow name="get:\office-plans:dvt-sys-office-plans-config">
+        <flow-ref doc:name="Flow Ref: get-office-plan-main-flow" doc:id="afb92fcc-af1d-431d-852e-097b7ccc2655" name="get-office-plan-main-flow" />
+    </flow>
+</mule>

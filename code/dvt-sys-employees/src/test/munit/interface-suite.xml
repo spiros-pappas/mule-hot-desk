@@ -1,0 +1,220 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:munit="http://www.mulesoft.org/schema/mule/munit" xmlns:munit-tools="http://www.mulesoft.org/schema/mule/munit-tools"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xsi:schemaLocation="
+		http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+		http://www.mulesoft.org/schema/mule/munit http://www.mulesoft.org/schema/mule/munit/current/mule-munit.xsd
+		http://www.mulesoft.org/schema/mule/munit-tools  http://www.mulesoft.org/schema/mule/munit-tools/current/mule-munit-tools.xsd">
+	<munit:config name="interface-suite.xml" />
+	<munit:test name="get:\employees:dvt-sys-employees-config-test" doc:id="8e78b3eb-9d23-47c9-b586-1c757efb3657" >
+		<munit:behavior >
+			<munit:set-event doc:name="Set Input" doc:id="c2a7b676-dda7-40a5-b865-559f0cef6ff6" >
+				<munit:payload value="#[readUrl('classpath://getemployeesdvtsysemployeesconfigtest\set-event_payload.dwl')]" encoding="UTF-8" />
+				<munit:attributes value="#[readUrl('classpath://getemployeesdvtsysemployeesconfigtest\set-event_attributes.dwl')]" />
+				<munit:variables >
+					<munit:variable key="outboundHeaders" value="#[readUrl('classpath://getemployeesdvtsysemployeesconfigtest\set-event_variable_.dwl')]" />
+					<munit:variable key="logMessage" value="#[output application/json --- readUrl('classpath://getemployeesdvtsysemployeesconfigtest\set-event_variable_1.dwl')]" encoding="UTF-8" mediaType="application/json" />
+				</munit:variables>
+			</munit:set-event>
+		</munit:behavior>
+		<munit:execution >
+			<flow-ref doc:name="Flow-ref to get:\employees:dvt-sys-employees-config" doc:id="8366bae9-4493-4da5-9d66-5f3029dd45a8" name="get:\employees:dvt-sys-employees-config"/>
+		</munit:execution>
+		<munit:validation >
+			<munit-tools:assert doc:name="Assert payload" doc:id="a18429e1-5d97-4672-aedc-f6ed59e4066c" message="The payload does not match">
+				<munit-tools:that ><![CDATA[#[%dw 2.0
+import getemployeesdvtsysemployeesconfigtest::assert_expression_payload
+---
+assert_expression_payload::main({payload: payload, attributes: attributes, vars: vars})]]]></munit-tools:that>
+			</munit-tools:assert>
+		</munit:validation>
+	</munit:test>
+	<munit:test name="get:\employments:dvt-sys-employees-config-test" doc:id="3105ce0c-8e71-4378-91fd-17c26611125f" >
+		<munit:behavior >
+			<munit:set-event doc:name="Set Input" doc:id="f67dd813-fec4-4bb8-9d2c-9fe5276b7aa1" >
+				<munit:payload value="#[readUrl('classpath://getemploymentsdvtsysemployeesconfigtest\set-event_payload.dwl')]" encoding="UTF-8" />
+				<munit:attributes value="#[readUrl('classpath://getemploymentsdvtsysemployeesconfigtest\set-event_attributes.dwl')]" />
+				<munit:variables >
+					<munit:variable key="outboundHeaders" value="#[readUrl('classpath://getemploymentsdvtsysemployeesconfigtest\set-event_variable_.dwl')]" />
+					<munit:variable key="logMessage" value="#[output application/json --- readUrl('classpath://getemploymentsdvtsysemployeesconfigtest\set-event_variable_1.dwl')]" encoding="UTF-8" mediaType="application/json" />
+				</munit:variables>
+			</munit:set-event>
+		</munit:behavior>
+		<munit:execution >
+			<flow-ref doc:name="Flow-ref to get:\employments:dvt-sys-employees-config" doc:id="be319b46-df7e-498d-88fa-54f6529148eb" name="get:\employments:dvt-sys-employees-config"/>
+		</munit:execution>
+		<munit:validation >
+			<munit-tools:assert doc:name="Assert payload" doc:id="fbca5366-f441-4c08-b3a6-26909bc9fc88" message="The payload does not match">
+				<munit-tools:that ><![CDATA[#[%dw 2.0
+import getemploymentsdvtsysemployeesconfigtest::assert_expression_payload
+---
+assert_expression_payload::main({payload: payload, attributes: attributes, vars: vars})]]]></munit-tools:that>
+			</munit-tools:assert>
+		</munit:validation>
+	</munit:test>
+	<munit:test name="get:\teams:dvt-sys-employees-config-test" doc:id="085759dd-701e-4504-8a1c-27e273fdea7b" >
+		<munit:behavior >
+			<munit:set-event doc:name="Set Input" doc:id="bc3a3ee4-cbce-475f-9e58-2932f4496878" >
+				<munit:payload value="#[readUrl('classpath://getteamsdvtsysemployeesconfigtest\set-event_payload.dwl')]" encoding="UTF-8" />
+				<munit:attributes value="#[readUrl('classpath://getteamsdvtsysemployeesconfigtest\set-event_attributes.dwl')]" />
+				<munit:variables >
+					<munit:variable key="outboundHeaders" value="#[readUrl('classpath://getteamsdvtsysemployeesconfigtest\set-event_variable_.dwl')]" />
+					<munit:variable key="logMessage" value="#[output application/json --- readUrl('classpath://getteamsdvtsysemployeesconfigtest\set-event_variable_1.dwl')]" encoding="UTF-8" mediaType="application/json" />
+				</munit:variables>
+			</munit:set-event>
+		</munit:behavior>
+		<munit:execution >
+			<flow-ref doc:name="Flow-ref to get:\teams:dvt-sys-employees-config" doc:id="fffaddfd-e4b3-4c7f-a429-cf6b9b6ca0c6" name="get:\teams:dvt-sys-employees-config"/>
+		</munit:execution>
+		<munit:validation >
+			<munit-tools:assert doc:name="Assert payload" doc:id="883f05a6-7d18-4932-8fe1-7b0f9b2b73d6" message="The payload does not match">
+				<munit-tools:that ><![CDATA[#[%dw 2.0
+import getteamsdvtsysemployeesconfigtest::assert_expression_payload
+---
+assert_expression_payload::main({payload: payload, attributes: attributes, vars: vars})]]]></munit-tools:that>
+			</munit-tools:assert>
+		</munit:validation>
+	</munit:test>
+	<munit:test name="get:\employments\(id):dvt-sys-employees-config-test" doc:id="9e6659e4-023a-4c35-b907-b6a65d5a12d0" >
+		<munit:behavior >
+			<munit:set-event doc:name="Set Input" doc:id="5ee82934-4611-448d-963e-89b0b6c70803" >
+				<munit:payload value="#[readUrl('classpath://getemploymentsiddvtsysemployeesconfigtest\set-event_payload.dwl')]" encoding="UTF-8" />
+				<munit:attributes value="#[readUrl('classpath://getemploymentsiddvtsysemployeesconfigtest\set-event_attributes.dwl')]" />
+				<munit:variables >
+					<munit:variable key="outboundHeaders" value="#[readUrl('classpath://getemploymentsiddvtsysemployeesconfigtest\set-event_variable_.dwl')]" />
+					<munit:variable key="logMessage" value="#[output application/json --- readUrl('classpath://getemploymentsiddvtsysemployeesconfigtest\set-event_variable_1.dwl')]" encoding="UTF-8" mediaType="application/json" />
+				</munit:variables>
+			</munit:set-event>
+		</munit:behavior>
+		<munit:execution >
+			<flow-ref doc:name="Flow-ref to get:\employments\(id):dvt-sys-employees-config" doc:id="b0fb2294-9ac2-4a9e-ab60-84432ead26a8" name="get:\employments\(id):dvt-sys-employees-config"/>
+		</munit:execution>
+		<munit:validation >
+			<munit-tools:assert doc:name="Assert payload" doc:id="de3fdb64-331d-47ca-87c1-a762ae7fde53" message="The payload does not match">
+				<munit-tools:that ><![CDATA[#[%dw 2.0
+import getemploymentsiddvtsysemployeesconfigtest::assert_expression_payload
+---
+assert_expression_payload::main({payload: payload, attributes: attributes, vars: vars})]]]></munit-tools:that>
+			</munit-tools:assert>
+		</munit:validation>
+	</munit:test>
+	<munit:test name="get:\teams\(id):dvt-sys-employees-config-test" doc:id="cec18f04-e2a4-46d0-aa41-3431e3e7f39f" >
+		<munit:behavior >
+			<munit:set-event doc:name="Set Input" doc:id="c7d01a0b-7d82-4977-ba7b-d33b49b7e571" >
+				<munit:payload value="#[readUrl('classpath://getteamsiddvtsysemployeesconfigtest\set-event_payload.dwl')]" encoding="UTF-8" />
+				<munit:attributes value="#[readUrl('classpath://getteamsiddvtsysemployeesconfigtest\set-event_attributes.dwl')]" />
+				<munit:variables >
+					<munit:variable key="outboundHeaders" value="#[readUrl('classpath://getteamsiddvtsysemployeesconfigtest\set-event_variable_.dwl')]" />
+					<munit:variable key="logMessage" value="#[output application/json --- readUrl('classpath://getteamsiddvtsysemployeesconfigtest\set-event_variable_1.dwl')]" encoding="UTF-8" mediaType="application/json" />
+				</munit:variables>
+			</munit:set-event>
+		</munit:behavior>
+		<munit:execution >
+			<flow-ref doc:name="Flow-ref to get:\teams\(id):dvt-sys-employees-config" doc:id="ee2bfc43-7ef8-4a0d-8758-724c86b95634" name="get:\teams\(id):dvt-sys-employees-config"/>
+		</munit:execution>
+		<munit:validation >
+			<munit-tools:assert doc:name="Assert payload" doc:id="6d528329-8f9e-4d21-a3a2-1fb9a379be7b" message="The payload does not match">
+				<munit-tools:that ><![CDATA[#[%dw 2.0
+import getteamsiddvtsysemployeesconfigtest::assert_expression_payload
+---
+assert_expression_payload::main({payload: payload, attributes: attributes, vars: vars})]]]></munit-tools:that>
+			</munit-tools:assert>
+		</munit:validation>
+	</munit:test>
+	<munit:test name="get:\employees\(id):dvt-sys-employees-config-test" doc:id="c2133b55-22f2-42b1-8a37-fadf8517d9e4" >
+		<munit:behavior >
+			<munit:set-event doc:name="Set Input" doc:id="eaf5bf39-78cd-48b3-ac12-b170866138cc" >
+				<munit:payload value="#[readUrl('classpath://getemployeesiddvtsysemployeesconfigtest\set-event_payload.dwl')]" encoding="UTF-8" />
+				<munit:attributes value="#[readUrl('classpath://getemployeesiddvtsysemployeesconfigtest\set-event_attributes.dwl')]" />
+				<munit:variables >
+					<munit:variable key="outboundHeaders" value="#[readUrl('classpath://getemployeesiddvtsysemployeesconfigtest\set-event_variable_.dwl')]" />
+					<munit:variable key="logMessage" value="#[output application/json --- readUrl('classpath://getemployeesiddvtsysemployeesconfigtest\set-event_variable_1.dwl')]" encoding="UTF-8" mediaType="application/json" />
+				</munit:variables>
+			</munit:set-event>
+		</munit:behavior>
+		<munit:execution >
+			<flow-ref doc:name="Flow-ref to get:\employees\(id):dvt-sys-employees-config" doc:id="e4d13c04-7da5-443d-bb6b-23be20022875" name="get:\employees\(id):dvt-sys-employees-config"/>
+		</munit:execution>
+		<munit:validation >
+			<munit-tools:assert doc:name="Assert payload" doc:id="7e1077d0-9730-4567-84df-9ae40d1aad3a" message="The payload does not match">
+				<munit-tools:that ><![CDATA[#[%dw 2.0
+import getemployeesiddvtsysemployeesconfigtest::assert_expression_payload
+---
+assert_expression_payload::main({payload: payload, attributes: attributes, vars: vars})]]]></munit-tools:that>
+			</munit-tools:assert>
+		</munit:validation>
+	</munit:test>
+	<munit:test name="get:\employees\(id):dvt-sys-employees-config-test1" doc:id="fb4e05da-4724-48cd-8f41-67933e633581" >
+		<munit:behavior >
+			<munit:set-event doc:name="Set Input" doc:id="247a8555-971a-4471-a9f1-fab44d9f1cd4" >
+				<munit:payload value="#[readUrl('classpath://getemployeesiddvtsysemployeesconfigtest1\set-event_payload.dwl')]" encoding="UTF-8" />
+				<munit:attributes value="#[readUrl('classpath://getemployeesiddvtsysemployeesconfigtest1\set-event_attributes.dwl')]" />
+				<munit:variables >
+					<munit:variable key="outboundHeaders" value="#[readUrl('classpath://getemployeesiddvtsysemployeesconfigtest1\set-event_variable_.dwl')]" />
+					<munit:variable key="logMessage" value="#[output application/json --- readUrl('classpath://getemployeesiddvtsysemployeesconfigtest1\set-event_variable_1.dwl')]" encoding="UTF-8" mediaType="application/json" />
+				</munit:variables>
+			</munit:set-event>
+		</munit:behavior>
+		<munit:execution >
+			<flow-ref doc:name="Flow-ref to get:\employees\(id):dvt-sys-employees-config" doc:id="537c1f7d-e466-4766-bcf8-e4ba9b3af33a" name="get:\employees\(id):dvt-sys-employees-config"/>
+		</munit:execution>
+		<munit:validation >
+			<munit-tools:assert doc:name="Assert payload" doc:id="db5d56e7-227f-4e9e-a508-1520f60239a5" message="The payload does not match">
+				<munit-tools:that ><![CDATA[#[%dw 2.0
+import getemployeesiddvtsysemployeesconfigtest1::assert_expression_payload
+---
+assert_expression_payload::main({payload: payload, attributes: attributes, vars: vars})]]]></munit-tools:that>
+			</munit-tools:assert>
+		</munit:validation>
+	</munit:test>
+	<munit:test name="get:\teams\(id):dvt-sys-employees-config-test1" doc:id="e41804f6-c223-439e-bf4b-1c0294eb21ba" >
+		<munit:behavior >
+			<munit:set-event doc:name="Set Input" doc:id="120285be-46e6-4314-8f35-22b6cb9748e6" >
+				<munit:payload value="#[readUrl('classpath://getteamsiddvtsysemployeesconfigtest1\set-event_payload.dwl')]" encoding="UTF-8" />
+				<munit:attributes value="#[readUrl('classpath://getteamsiddvtsysemployeesconfigtest1\set-event_attributes.dwl')]" />
+				<munit:variables >
+					<munit:variable key="outboundHeaders" value="#[readUrl('classpath://getteamsiddvtsysemployeesconfigtest1\set-event_variable_.dwl')]" />
+					<munit:variable key="logMessage" value="#[output application/json --- readUrl('classpath://getteamsiddvtsysemployeesconfigtest1\set-event_variable_1.dwl')]" encoding="UTF-8" mediaType="application/json" />
+				</munit:variables>
+			</munit:set-event>
+		</munit:behavior>
+		<munit:execution >
+			<flow-ref doc:name="Flow-ref to get:\teams\(id):dvt-sys-employees-config" doc:id="8060c277-d46e-43d3-b0ed-bfa10a60dc43" name="get:\teams\(id):dvt-sys-employees-config"/>
+		</munit:execution>
+		<munit:validation >
+			<munit-tools:assert doc:name="Assert payload" doc:id="28b50021-8b03-4c8a-b870-e39d676c0739" message="The payload does not match">
+				<munit-tools:that ><![CDATA[#[%dw 2.0
+import getteamsiddvtsysemployeesconfigtest1::assert_expression_payload
+---
+assert_expression_payload::main({payload: payload, attributes: attributes, vars: vars})]]]></munit-tools:that>
+			</munit-tools:assert>
+		</munit:validation>
+	</munit:test>
+	<munit:test name="get:\employments\(id):dvt-sys-employees-config-test1" doc:id="7b7284f9-821b-4a5f-a82f-7201a8beefbf" >
+		<munit:behavior >
+			<munit:set-event doc:name="Set Input" doc:id="04080c55-30a3-4cf3-af63-7241d431bf83" >
+				<munit:payload value="#[readUrl('classpath://getemploymentsiddvtsysemployeesconfigtest1\set-event_payload.dwl')]" encoding="UTF-8" />
+				<munit:attributes value="#[readUrl('classpath://getemploymentsiddvtsysemployeesconfigtest1\set-event_attributes.dwl')]" />
+				<munit:variables >
+					<munit:variable key="outboundHeaders" value="#[readUrl('classpath://getemploymentsiddvtsysemployeesconfigtest1\set-event_variable_.dwl')]" />
+					<munit:variable key="logMessage" value="#[output application/json --- readUrl('classpath://getemploymentsiddvtsysemployeesconfigtest1\set-event_variable_1.dwl')]" encoding="UTF-8" mediaType="application/json" />
+				</munit:variables>
+			</munit:set-event>
+		</munit:behavior>
+		<munit:execution >
+			<flow-ref doc:name="Flow-ref to get:\employments\(id):dvt-sys-employees-config" doc:id="c3a1fcff-85b2-4729-a229-3410254f3e8f" name="get:\employments\(id):dvt-sys-employees-config"/>
+		</munit:execution>
+		<munit:validation >
+			<munit-tools:assert doc:name="Assert payload" doc:id="9099473e-a06a-4c36-be9e-549fc455f26f" message="The payload does not match">
+				<munit-tools:that ><![CDATA[#[%dw 2.0
+import getemploymentsiddvtsysemployeesconfigtest1::assert_expression_payload
+---
+assert_expression_payload::main({payload: payload, attributes: attributes, vars: vars})]]]></munit-tools:that>
+			</munit-tools:assert>
+		</munit:validation>
+	</munit:test>
+
+
+</mule>

@@ -1,0 +1,23 @@
+# Configuration file for the Sandbox environment
+config.env.filename: "configs.sandbox.yaml"
+
+# Autodiscovery Id
+autodiscovery.id: "TDB"
+
+# Overwrite JSON Logger config
+json:
+  logger:
+    priority:
+      exception: "INFO"
+      before-request: "INFO"
+      after-request: "INFO"
+
+# HTTP Request Config
+dvt-prc-intention:
+  protocol: "HTTP"
+  host: "mule-worker-internal-dvt-prc-intention-v1-sandbox.uk-e1.cloudhub.io"
+  port: "8091"
+  path: ""
+  header:
+    client_id: "![uz5wDWrG9YJJeE6YkyzkD6gPrvjKtWlFaUhIJybhOJkWkc0sznEDS2S/Q7tcvMc0]"
+    client_secret: "![14r8o3beV3CF1h0/U7b6liInUbwQUzCQnuXyWFieSdIuL+bXojtRiaL0o/rRHJKF]"

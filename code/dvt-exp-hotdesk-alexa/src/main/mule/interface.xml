@@ -1,0 +1,167 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit"
+	xmlns:json-logger="http://www.mulesoft.org/schema/mule/json-logger" xmlns:tls="http://www.mulesoft.org/schema/mule/tls"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/tls http://www.mulesoft.org/schema/mule/tls/current/mule-tls.xsd
+http://www.mulesoft.org/schema/mule/json-logger http://www.mulesoft.org/schema/mule/json-logger/current/mule-json-logger.xsd">
+	<flow name="dvt-exp-hotdesk-alexaFlow" doc:id="11215daa-9553-4612-a658-a35029a4ca99" >
+		<http:listener doc:name="Listener" doc:id="a818a3f7-af09-41be-8c3d-c2d30533eb29" path="/alexa" config-ref="http-listener-config">
+		</http:listener>
+		<json-logger:logger doc:name="Logger Debug" doc:id="af487fdc-143c-4a25-9146-eae1363fc2d6" config-ref="json-logger-config" message="DEBUG: Inbound HTTP Request" priority="DEBUG" category="${json.logger.category.debug}">
+            <json-logger:content><![CDATA[#[import modules::JSONLoggerModule output application/json ---
+{
+    attributes: JSONLoggerModule::stringifyNonJSON(attributes),
+    payload: JSONLoggerModule::stringifyNonJSON(payload) 
+}]]]></json-logger:content>
+        </json-logger:logger>
+        <ee:transform doc:name="Prepare logMessage" doc:id="ea7815c1-4505-44af-99e8-e280ef6debc2">
+            <ee:message />
+            <ee:variables>
+                <ee:set-variable variableName="logMessage"><![CDATA[%dw 2.0
+output application/json
+---
+{
+	message: "START: Inbound HTTP Request",
+	content: {
+		remoteAddress: message.attributes.remoteAddress,
+		method: message.attributes.method,
+		requestPath: message.attributes.requestPath,
+		headers: {
+			client_id: message.attributes.headers.client_id,
+			client_secret: message.attributes.headers.client_secret
+		},
+		queryParams: message.attributes.queryParams
+	}
+}]]></ee:set-variable>
+            </ee:variables>
+        </ee:transform>
+        <json-logger:logger doc:name="Logger Start" doc:id="46b4050d-6408-4436-a974-4b6dc827651e" config-ref="json-logger-config" message="#[vars.logMessage.message]" priority="#[&quot;${json.logger.priority.start}&quot;]" category="${json.logger.category.start}">
+            <json-logger:content><![CDATA[#[output application/json 
+---
+vars.logMessage.content]]]></json-logger:content>
+        </json-logger:logger>
+        <flow-ref doc:name="Flow Ref: intents-router-sub-flow" doc:id="3b2e8f0f-945b-4492-9026-876f3a025a17" name="intents-router-sub-flow" />
+		<ee:transform doc:name="Update logMessage" doc:id="51081ef8-8b20-4513-ab64-c37458694d39">
+            <ee:message />
+            <ee:variables>
+                <ee:set-variable variableName="logMessage"><![CDATA[%dw 2.0
+output application/json
+---
+{
+	message: "END: Outbound HTTP Response",
+	content: {
+		httpStatus: vars.httpStatus
+	}
+}]]></ee:set-variable>
+            </ee:variables>
+        </ee:transform>
+        <json-logger:logger doc:name="Logger End" doc:id="5afe7769-b108-48e1-b3be-5f5a1ba873e3" config-ref="json-logger-config" tracePoint="END" priority="#[&quot;${json.logger.priority.end}&quot;]" category="${json.logger.category.end}" message="#[vars.logMessage.message]">
+            <json-logger:content><![CDATA[#[output application/json 
+---
+vars.logMessage.content]]]></json-logger:content>
+        </json-logger:logger>
+        <json-logger:logger doc:name="Logger Debug" doc:id="944b9727-79e4-4cc1-80b8-dbca2ee8f7c5" config-ref="json-logger-config" tracePoint="END" priority="DEBUG" category="${json.logger.category.debug}" message="DEBUG: Outbound HTTP Request" />
+	</flow>
+	<sub-flow name="intents-router-sub-flow" doc:id="d8cb29a2-5b92-41f2-8e76-818b17c2d2d7" >
+		<set-variable value="#[payload.request.intent.name]" doc:name="Set intent" doc:id="b625cfc6-554a-40cd-9c60-112907d9263d" variableName="intent"/>
+		<choice doc:name="Choice" doc:id="22047d96-24cf-4890-b00a-5b86f275bcd6" >
+		
+			<when expression='#[vars.intent == "BookHotDeskIntent"]'>
+				<flow-ref doc:name="Flow Ref: book-desk-sub-flow" doc:id="16ce17b9-0f53-411e-a56a-b96f92a3ee35" name="book-desk-sub-flow"/>
+				<ee:transform doc:name="responseText" doc:id="64c4f06c-2e50-4953-ad27-656e134fc737">
+					<ee:message>
+					</ee:message>
+					<ee:variables>
+						<ee:set-variable variableName="responseText" ><![CDATA[%dw 2.0
+output application/java
+---
+if (payload.status == 'Success')
+	"A hot desk has been booked as per you request. The desk number and other details will be sent to you via email later in the day."
+else if (payload.status == 'Partial Success')
+	"The hot desk has been booked with best possible schedule. The desk number and schedule details will be sent to you via email later in the day."
+else 
+	"Apologies. At this moment we can not book desk for you. Please contact system admin."]]></ee:set-variable>
+					</ee:variables>
+				</ee:transform>
+			</when>
+			<when expression='#[vars.intent  == "CheckBookingStatusIntent"]'>
+				<flow-ref doc:name="Flow Ref: booking-status-sub-flow" doc:id="8c8d4cd1-78fa-440d-8caf-38c4e3cf1228" name="booking-status-sub-flow"/>
+				<ee:transform doc:name="responseText" doc:id="aee9239b-5df6-4bee-b3ef-f4126a08b61f">
+					<ee:message />
+					<ee:variables>
+						<ee:set-variable variableName="responseText" ><![CDATA[%dw 2.0
+output application/java
+---
+payload.message]]></ee:set-variable>
+					</ee:variables>
+				</ee:transform>
+			</when>
+			<when expression='#[vars.intent  == "CancelBookingIntent"]'>
+				<flow-ref doc:name="Flow Ref: cancel-booking-sub-flow" doc:id="e7fcdaff-b815-4db9-850e-245ed6082aac" name="cancel-booking-sub-flow"/>
+				<ee:transform doc:name="responseText" doc:id="4cc1c42a-a3a0-412a-89d4-cccb8b5a5bca">
+					<ee:message />
+					<ee:variables>
+						<ee:set-variable variableName="responseText"><![CDATA[%dw 2.0
+output application/java
+---
+payload.message]]></ee:set-variable>
+					</ee:variables>
+				</ee:transform>
+			</when>
+			<when expression='#[vars.intent  == "GetTeamBookginsIntent"]'>
+				<flow-ref doc:name="Flow Ref: team-bookings-sub-flow" doc:id="16ce17b9-0f53-411e-a56a-b96f92a3ee35" name="team-bookings-sub-flow"/>
+				<ee:transform doc:name="responseText" doc:id="36230f64-1b18-4129-b570-dd5c50c27542">
+					<ee:message />
+					<ee:variables>
+						<ee:set-variable variableName="responseText" ><![CDATA[%dw 2.0
+output application/java
+---
+payload.message]]></ee:set-variable>
+					</ee:variables>
+				</ee:transform>
+			</when>
+			<otherwise >
+				<ee:transform doc:name="responseText" doc:id="ee625f16-a38c-449e-9f3d-a01eee779b17">
+			<ee:message>
+			</ee:message>
+					<ee:variables >
+						<ee:set-variable variableName="responseText" ><![CDATA[%dw 2.0
+output application/java
+---
+"Success"]]></ee:set-variable>
+					</ee:variables>
+		</ee:transform>
+			</otherwise>
+		</choice>
+		<ee:transform doc:name="Alexa Response" doc:id="ec4e1d44-4d1b-41fb-800e-6f8167777d16">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+	version: "1.0",
+	sessionAttributes: {
+		locale: "en-US"
+	},
+	response: {
+		outputSpeech: {
+			'type': "PlainText",
+			text: vars.responseText,
+			playBehavior: "REPLACE_ENQUEUED"
+		},
+        shouldEndSession: false,
+        'type': "_DEFAULT_RESPONSE"
+    }
+}
+]]></ee:set-payload>
+					</ee:message>
+					<ee:variables />
+				</ee:transform>
+	</sub-flow>
+	
+</mule>

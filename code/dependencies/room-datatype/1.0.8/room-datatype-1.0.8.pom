@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>813cde1d-689b-4689-91c2-c9f408772769</groupId>
+  <artifactId>room-datatype</artifactId>
+  <version>1.0.8</version>
+  <name>room-datatype</name>
+  <properties>
+    <classifier>raml-fragment</classifier>
+    <main>room-datatype.raml</main>
+    <originalFormatVersion>1.0</originalFormatVersion>
+    <projectId>772e8bd3-0ce8-4f38-8790-5ca4cf7c7eb8</projectId>
+    <branchId>master</branchId>
+    <commitId>caef78d8c24c6dee9fc77cd6446c58171f37b21f</commitId>
+    <type>raml-fragment</type>
+    <mainFile>room-datatype.raml</mainFile>
+  </properties>
+  <dependencies>
+    <dependency>
+      <groupId>813cde1d-689b-4689-91c2-c9f408772769</groupId>
+      <version>1.0.0</version>
+      <artifactId>equipment-datatype</artifactId>
+      <type>zip</type>
+      <classifier>raml-fragment</classifier>
+    </dependency>
+    <dependency>
+      <groupId>813cde1d-689b-4689-91c2-c9f408772769</groupId>
+      <version>1.0.5</version>
+      <artifactId>desk-datatype</artifactId>
+      <type>zip</type>
+      <classifier>raml-fragment</classifier>
+    </dependency>
+  </dependencies>
+  <repositories>
+    <repository>
+      <id>anypoint-exchange</id>
+      <url>https://maven.anypoint.mulesoft.com/api/v3/maven</url>
+    </repository>
+  </repositories>
+</project>

@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+  xmlns:os="http://www.mulesoft.org/schema/mule/os"
+  xmlns:http="http://www.mulesoft.org/schema/mule/http"
+  xmlns="http://www.mulesoft.org/schema/mule/core"
+  xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/current/mule-os.xsd">
+
+  <flow name="get-watermarks-main-flow" doc:id="90e1229f-9047-49ee-8dfe-d586142f0256">
+    <os:retrieve-all doc:name="Retrieve all watermarks" doc:id="7b4c8200-a1c1-4ec6-a865-166e3daf7dcf" objectStore="watermarks-object-store" target="osValue" />
+		<ee:transform doc:name="Convert to JSON" doc:id="08157e7c-a436-4933-982f-9d261060dd4f">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+vars.osValue]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<ee:transform doc:name="Transform Message" doc:id="1ebcf77e-25f3-4151-b3fd-4d1296594a6b" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+var watermarks = 
+	message.payload mapObject (value, key) -> {
+		watermark: read(value,'application/json')
+	}
+---
+watermarks.*watermark map (item, index) -> {
+	watermarkId: item.watermarkId,
+    lastSuccess: item.lastSuccess
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="get-watermark-by-id-main-flow" doc:id="ee84e395-ee2f-4e25-b4c8-3b689eacf09f">
+    <os:retrieve doc:name="Retrieve key from OS" doc:id="6dc77b08-8531-4da5-a4ce-108ef73ef590" key="#[attributes.uriParams.watermarkId]" objectStore="watermarks-object-store" target="osValue">
+					<os:default-value><![CDATA[#[%dw 2.0
+output application/json
+---
+{
+	message: "Doesn't exist"
+}]]]></os:default-value>
+				</os:retrieve>
+		<ee:transform doc:name="Convert to JSON" doc:id="38ed5666-bb57-4fb1-87a6-8348015322b3">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+vars.osValue]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+</mule>

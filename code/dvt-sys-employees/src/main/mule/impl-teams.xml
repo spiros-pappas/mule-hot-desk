@@ -1,0 +1,172 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:json-logger="http://www.mulesoft.org/schema/mule/json-logger"
+	xmlns:db="http://www.mulesoft.org/schema/mule/db"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd 
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/json-logger http://www.mulesoft.org/schema/mule/json-logger/current/mule-json-logger.xsd">
+	<flow name="get-teams-main-flow" doc:id="745bf1f0-2242-43d7-87e6-a9cf5a805d7b" >
+		<ee:transform doc:name="Update logMessage" doc:id="7b5599d2-918a-4c78-877f-a5082158d2bf">
+			<ee:message />
+			<ee:variables>
+				<ee:set-variable variableName="logMessage"><![CDATA[%dw 2.0
+output application/java
+---
+{
+	message: "FLOW: get-teams",
+	content: "Retrieving all available Teams."
+}]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<json-logger:logger doc:name="Logger Flow" doc:id="61e231a8-b218-46e1-bbf3-08bbc7958d31" config-ref="json-logger-config" message="#[vars.logMessage.message]" tracePoint="FLOW" priority='#["${json.logger.priority.flow}"]' category="${json.logger.category.flow}">
+			<json-logger:content><![CDATA[#[vars.logMessage.content]]]></json-logger:content>
+		</json-logger:logger>
+		<db:select doc:name="Select from teams" doc:id="35a08ca4-463b-47b2-9f8e-06aeabde92a6" config-ref="database-config">
+			<db:sql ><![CDATA[select * from teams;]]></db:sql>
+		</db:select>
+		<choice doc:name="Choice" doc:id="37e76d36-713e-4a11-a854-6e5bfe7513ff" >
+			<when expression="#[sizeOf(payload)&gt;0]">
+				<ee:transform doc:name="Transform Message" doc:id="c04f494d-b2d1-4a83-b5fb-4ca90c8bfc12">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+payload map (item,index) -> {
+	id: item.id,
+	name: item.name,
+	parentTeam: item.parent_team
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+				<ee:transform doc:name="Update logMessage" doc:id="951c49fa-6dd4-4697-a0d6-81db9e214d07">
+			<ee:message />
+			<ee:variables>
+				<ee:set-variable variableName="logMessage"><![CDATA[%dw 2.0
+output application/java
+---
+{
+	message: "FLOW: get-teams",
+	content: "Retrieved all available Teams."
+}]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+			</when>
+			<otherwise >
+				<ee:transform doc:name="Transform Message" doc:id="de7d1a47-a980-4a03-85e0-cff71ce03d90">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+	errorCode: "NOT_FOUND",
+	errorMessage: "Teams not found."
+}]]></ee:set-payload>
+					</ee:message>
+					<ee:variables >
+						<ee:set-variable variableName="httpStatus" ><![CDATA[404]]></ee:set-variable>
+					</ee:variables>
+				</ee:transform>
+				<ee:transform doc:name="Update logMessage" doc:id="386bbe53-72bb-459b-a946-af7a31f0be7e" >
+					<ee:message />
+					<ee:variables >
+						<ee:set-variable variableName="logMessage" ><![CDATA[%dw 2.0
+output application/java
+---
+{
+	message: "FLOW: get-teams",
+	content: "Teams not found."
+}]]></ee:set-variable>
+					</ee:variables>
+				</ee:transform>
+			</otherwise>
+		</choice>
+		<json-logger:logger doc:name="Logger Flow" doc:id="de7d0fe1-b526-4a24-9f90-7f8d81476e21" config-ref="json-logger-config" message="#[vars.logMessage.message]" tracePoint="FLOW" priority='#["${json.logger.priority.flow}"]' category="${json.logger.category.flow}" >
+			<json-logger:content ><![CDATA[#[vars.logMessage.content]]]></json-logger:content>
+		</json-logger:logger>
+	</flow>
+	<flow name="get-team-by-id-main-flow" doc:id="e5e632cf-143f-4f0a-8e12-f1c8567f662b" >
+		<ee:transform doc:name="Update logMessage" doc:id="f3a224fd-7a9b-4891-956b-ca7b339b4544">
+			<ee:message />
+			<ee:variables>
+				<ee:set-variable variableName="logMessage"><![CDATA[%dw 2.0
+output application/java
+---
+{
+	message: "FLOW: get-team-by-id",
+	content: "Retrieving Team details with id $(vars.teamId)"
+}]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<json-logger:logger doc:name="Logger Flow" doc:id="d6a29a9d-f822-40cb-805e-3d54b005bdd7" config-ref="json-logger-config" message="#[vars.logMessage.message]" tracePoint="FLOW" priority='#["${json.logger.priority.flow}"]' category="${json.logger.category.flow}">
+			<json-logger:content><![CDATA[#[vars.logMessage.content]]]></json-logger:content>
+		</json-logger:logger>
+		<db:select doc:name="Select from teams" doc:id="b64aa5f2-8940-4938-ba06-020a8ff4b15a" config-ref="database-config">
+			<db:sql ><![CDATA[select *
+from teams 
+where id=:teamId;]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{teamId: vars.teamId}]]]></db:input-parameters>
+		</db:select>
+		<choice doc:name="Choice" doc:id="7b1f653e-5123-4eac-a5db-d105e767783f" >
+			<when expression="#[sizeOf(payload)&gt;0]">
+				<ee:transform doc:name="Transform Message" doc:id="c52eae50-5cca-4d94-a5f9-9d9153f88d21">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+using (team = payload[0]) {
+  id: team.id,
+  name: team.name,
+  parentTeam: team.parent_team
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+				<ee:transform doc:name="Update logMessage" doc:id="8c131fa2-6351-476b-bfc3-606529a11ef1">
+			<ee:message />
+			<ee:variables>
+				<ee:set-variable variableName="logMessage"><![CDATA[%dw 2.0
+output application/java
+---
+{
+	message: "FLOW: get-team-by-id",
+	content: "Retrieved details for Team with id $(vars.teamId)"
+}]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+			</when>
+			<otherwise >
+				<ee:transform doc:name="Transform Message" doc:id="c718eb6c-1633-4f52-ad5b-3a1f303058c6">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+	errorCode: "NOT_FOUND",
+	errorMessage: "Employment with id $(vars.teamId) not found."
+}]]></ee:set-payload>
+					</ee:message>
+					<ee:variables >
+						<ee:set-variable variableName="httpStatus" ><![CDATA[404]]></ee:set-variable>
+					</ee:variables>
+				</ee:transform>
+				<ee:transform doc:name="Update logMessage" doc:id="d8b1120d-adef-4b4a-a0c9-b219dbd293ab" >
+					<ee:message />
+					<ee:variables >
+						<ee:set-variable variableName="logMessage" ><![CDATA[%dw 2.0
+output application/java
+---
+{
+	message: "FLOW: get-team-by-id",
+	content: "Team with id $(vars.teamId) not found."
+}]]></ee:set-variable>
+					</ee:variables>
+				</ee:transform>
+			</otherwise>
+		</choice>
+		<json-logger:logger doc:name="Logger Flow" doc:id="0614bfd2-0569-49f7-9b37-6fb86ec127ed" config-ref="json-logger-config" message="#[vars.logMessage.message]" tracePoint="FLOW" priority='#["${json.logger.priority.flow}"]' category="${json.logger.category.flow}" >
+			<json-logger:content ><![CDATA[#[vars.logMessage.content]]]></json-logger:content>
+		</json-logger:logger>
+	</flow>
+</mule>

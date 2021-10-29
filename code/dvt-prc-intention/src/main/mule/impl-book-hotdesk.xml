@@ -1,0 +1,641 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:json-logger="http://www.mulesoft.org/schema/mule/json-logger" xmlns:os="http://www.mulesoft.org/schema/mule/os"
+	xmlns:file="http://www.mulesoft.org/schema/mule/file"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd
+http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/current/mule-os.xsd
+http://www.mulesoft.org/schema/mule/json-logger http://www.mulesoft.org/schema/mule/json-logger/current/mule-json-logger.xsd">
+	
+	<flow name="book-hotdesk-main-flow" doc:id="af05304e-7804-42c4-8df3-a97982c44ac4" >
+		<set-variable value="#[payload]" doc:name="Set inPayload Variable" doc:id="962f1158-b6ef-4e07-9cdb-a324fc873cb1" variableName="inPayload"/>
+		<flow-ref doc:name="Flow Ref: get-employee-by-email-sub-flow" doc:id="1cac7197-1d60-4aba-bde5-5b91ce268887" name="get-employee-by-email-sub-flow" target="employee"/>
+		<flow-ref doc:name="Flow Ref: check-for-duplicate-intentions-sub-flow" doc:id="6a34b53c-7128-4479-9c0a-0a0ab26d1b81" name="check-for-duplicate-intentions-sub-flow" target="duplicates"/>
+		<flow-ref doc:name="Flow Ref: get-availability-sub-flow" doc:id="89d4e528-2520-4612-b7b8-8d979dda1489" name="get-availability-sub-flow"/>
+		<flow-ref doc:name="Flow Ref: post-available-intentions-sub-flow" doc:id="0310266e-ba21-4f18-b5b7-b865ab022c5e" name="post-available-intentions-sub-flow" />
+		<flow-ref doc:name="Flow Ref: update-availability-sub-flow" doc:id="06779e63-0764-409d-bc81-fced780f330c" name="update-availability-sub-flow"/>
+		<ee:transform doc:name="Response" doc:id="0af8f345-226a-4524-90ac-d4a17c52d5a7">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+var results = vars.availability groupBy $.availableDesk
+var countYes = sizeOf(results.Yes) default 0
+var countNo = sizeOf(results.No) default 0
+
+var status = 
+    if (countYes>0 and countNo==0) "Success" 
+    else if (countYes>0 and countNo>0) "Partial Success" else "Failed"
+---
+{
+    status: status,
+    details: vars.availability map(availability,index) -> {
+        date: availability.date,
+        availability: availability.availableDesk
+    }
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+	</flow>
+	<sub-flow name="get-employee-by-email-sub-flow" doc:id="d6990f6d-0b79-4073-a68a-2ba8389403cc" >
+		<ee:transform doc:name="Build Request" doc:id="59e5656f-ef18-4839-b6bf-802d9180332a">
+			<ee:message>
+			</ee:message>
+			<ee:variables>
+				<ee:set-variable variableName="request"><![CDATA[%dw 2.0
+output application/java
+var protocol = lower(p('dvt-sys-employees.protocol'))
+var host = p('dvt-sys-employees.host')
+var port = p('dvt-sys-employees.port')
+var path = "employees"
+---
+{
+	protocol: protocol,
+	method: "GET",
+	endpoint: "$(protocol)://$(host):$(port)/$(path)",
+	transportHeaders: {
+		client_id: p('secure::dvt-sys-employees.header.client_id'),
+		client_secret: p('secure::dvt-sys-employees.header.client_secret')
+	},
+	uriParameters: {},
+	queryParameters: {
+		workEmail: payload.employeeEmail
+	}
+}]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<ee:transform doc:name="Update logMessage" doc:id="cdcead9f-285d-43ab-ac18-1ef0d2898635">
+			<ee:message />
+			<ee:variables>
+				<ee:set-variable variableName="logMessage"><![CDATA[%dw 2.0
+output application/json
+var bsName = "dvt-sys-employees"
+---
+{
+	message: "BEFORE_REQUEST: HTTP Request to $(bsName)",
+	content: {
+		method: vars.request.method,
+		endpoint: vars.request.endpoint,
+		transportHeaders: vars.request.transportHeaders,
+		uriParameters: vars.request.uriParameters,
+		queryParameters: vars.request.queryParameters,
+		payload: message.payload
+	}
+}]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<json-logger:logger doc:name="Logger Before Request" doc:id="b34c474d-3f7b-4241-9c90-1bb0974d8099" config-ref="json-logger-config" message="#[vars.logMessage.message]" tracePoint="BEFORE_REQUEST" priority='#["${json.logger.priority.before-request}"]' category="${json.logger.category.before-request}">
+			<json-logger:content><![CDATA[#[import modules::JSONLoggerModule 
+output application/json
+---
+vars.logMessage.content]]]></json-logger:content>
+		</json-logger:logger>
+		<http:request method="#[vars.request.method]" doc:name="RESTful API" doc:id="d29d4db8-cea3-447f-a22b-cbf726beb728" config-ref="http-request-config" url="#[vars.request.endpoint]" sendCorrelationId="ALWAYS" correlationId="#[correlationId]" responseTimeout="#[vars.request.timeout.response]">
+			<reconnect frequency="${request.reconnection.frequency}" count="${request.reconnection.attempts}" />
+			<http:headers><![CDATA[#[vars.request.transportHeaders]]]></http:headers>
+			<http:uri-params><![CDATA[#[vars.request.uriParameters]]]></http:uri-params>
+			<http:query-params><![CDATA[#[vars.request.queryParameters]]]></http:query-params>
+		</http:request>
+		<ee:transform doc:name="Update logMessage" doc:id="4513df15-2d13-4fed-a099-47f2703fc510">
+			<ee:message />
+			<ee:variables>
+				<ee:set-variable variableName="logMessage"><![CDATA[%dw 2.0
+output application/json
+var bsName = "dvt-sys-employees"
+---
+{
+	message: "AFTER_REQUEST: HTTP Response from $(bsName)",
+	content: {
+		attributes: message.attributes,
+		payload: message.payload
+	}
+}]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<json-logger:logger doc:name="Logger After Request" doc:id="12f1a6d3-6444-4f74-b319-0b5a47660fd2" config-ref="json-logger-config" message="#[vars.logMessage.message]" tracePoint="AFTER_REQUEST" priority='#["${json.logger.priority.after-request}"]' category="${json.logger.category.after-request}">
+			<json-logger:content><![CDATA[#[import modules::JSONLoggerModule 
+output application/json
+---
+vars.logMessage.content]]]></json-logger:content>
+		</json-logger:logger>
+		<ee:transform doc:name="employee details" doc:id="8002f075-145d-4558-b94b-24efd7225084" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload[0]]]></ee:set-payload>
+			</ee:message>
+			<ee:variables >
+			</ee:variables>
+		</ee:transform>
+	</sub-flow>
+	<sub-flow name="check-for-duplicate-intentions-sub-flow" doc:id="12c779f6-95f3-446e-b893-e9dbec916d09" >
+		<set-variable value="#[[]]" doc:name="Set intentions Variable" doc:id="b48d8127-ce6a-474e-a9f5-74c7bb824b8a" variableName="intentions"/>
+		<foreach doc:name="For Each Intention Date" doc:id="d0a98f63-1ece-471c-a516-efbf454d3fe5" collection="#[payload.dates]">
+			<set-variable value="#[payload]" doc:name="Set Date Variable" doc:id="216ee377-3d0c-45e4-bcb2-de1490bd416f" variableName="date" />
+			<try doc:name="Try" doc:id="fdc49c21-7c07-419c-a601-4558f66422fd" >
+				<flow-ref doc:name="Flow Ref: get-intention-by-employee-id-sub-flow" doc:id="a15c75b8-1d58-48b4-be06-1196da8cb9b4" name="get-intention-by-employee-id-sub-flow"/>
+				<ee:transform doc:name="Transform Intentions Message" doc:id="883f2591-4aef-40f0-b364-ddf0adc50f3f">
+					<ee:message>
+					</ee:message>
+					<ee:variables>
+						<ee:set-variable variableName="intentions"><![CDATA[%dw 2.0
+output application/json
+
+var checkIntent = [{
+	"employeeId": vars.employeeId,
+	"date": vars.date,
+	"intention": "Yes"
+	
+	
+}]
+---
+[vars.intentions ++ checkIntent] reduce $]]></ee:set-variable>
+					</ee:variables>
+				</ee:transform>
+				<error-handler >
+					<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="84865a08-d08c-403a-a375-1a0f2b4fd003" type="HTTP:NOT_FOUND">
+						<ee:transform doc:name="Transform Intentions Message" doc:id="4f1a6819-1324-401f-baeb-948efbd7130f">
+						<ee:message>
+						</ee:message>
+						<ee:variables>
+							<ee:set-variable variableName="intentions"><![CDATA[%dw 2.0
+output application/json
+
+var checkIntent = [{
+	"employeeId": vars.employeeId,
+	"date": vars.date,
+	"intention": "No"
+	
+	
+}]
+---
+[vars.intentions ++ checkIntent] reduce $]]></ee:set-variable>
+						</ee:variables>
+					</ee:transform>
+					</on-error-continue>
+				</error-handler>
+			</try>
+		</foreach>
+		<ee:transform doc:name="Calcullation" doc:id="429a7ad5-c7d3-461f-8aca-f8deed401eab">
+				<ee:message>
+				</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="haveIntentions" ><![CDATA[%dw 2.0
+output application/json
+---
+vars.intentions filter ((item, index) -> item.intention == "Yes" )]]></ee:set-variable>
+			</ee:variables>
+			</ee:transform>
+		<choice doc:name="Employee has already intention ?" doc:id="02ac4628-4df9-4d2e-a0d5-953e826c9d15">
+				<when expression="#[((sizeOf(vars.inPayload.dates)) == (sizeOf(vars.haveIntentions)))]">
+					<raise-error doc:name="Raise error - Intentions Already Created" doc:id="3c818811-f3d2-46fa-bb16-c035380cc7e6" type="INTENTIONS:ALL_CREATED" description='Employee already created intentions for asked dates.' />
+				</when>
+			<otherwise >
+				<ee:transform doc:name="Update inPayload variable with new intentionDates" doc:id="88a5981b-0db8-4cbd-9567-714df0f82425" >
+					<ee:message >
+					</ee:message>
+					<ee:variables >
+						<ee:set-variable variableName="inPayload" ><![CDATA[%dw 2.0
+output application/json
+var noIntentions = (vars.intentions filter ((item, index) -> item.intention == "No")).date
+---
+vars.inPayload update {
+        case .dates -> noIntentions
+}]]></ee:set-variable>
+					</ee:variables>
+				</ee:transform>
+			</otherwise>
+			</choice>
+	</sub-flow>
+	<sub-flow name="get-intention-by-employee-id-sub-flow" doc:id="3cb9b0a9-544a-4072-a734-a95cca9139ab" >
+		<ee:transform doc:name="Build Request" doc:id="c8f737fa-8295-45ad-8d1b-6af885305700">
+			<ee:message>
+			</ee:message>
+			<ee:variables>
+				<ee:set-variable variableName="request"><![CDATA[%dw 2.0
+output application/java
+var protocol = lower(p('dvt-sys-bookings.protocol'))
+var host = p('dvt-sys-bookings.host')
+var port = p('dvt-sys-bookings.port')
+var path = "intentions"
+---
+{
+	protocol: protocol,
+	method: "GET",
+	endpoint: "$(protocol)://$(host):$(port)/$(path)",
+	transportHeaders: {
+		client_id: p('secure::dvt-sys-bookings.header.client_id'),
+		client_secret: p('secure::dvt-sys-bookings.header.client_secret')
+	},
+	uriParameters: {},
+	queryParameters: {
+		date: vars.date,
+		employeeId: vars.employee.id
+	}
+}]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<ee:transform doc:name="Update logMessage" doc:id="3add96a3-ebd7-48c8-b113-97ac13aa4a4d">
+			<ee:message />
+			<ee:variables>
+				<ee:set-variable variableName="logMessage"><![CDATA[%dw 2.0
+output application/json
+var bsName = "dvt-sys-bookings"
+---
+{
+	message: "BEFORE_REQUEST: HTTP Request to $(bsName)",
+	content: {
+		method: vars.request.method,
+		endpoint: vars.request.endpoint,
+		transportHeaders: vars.request.transportHeaders,
+		uriParameters: vars.request.uriParameters,
+		queryParameters: vars.request.queryParameters,
+		payload: message.payload
+	}
+}]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<json-logger:logger doc:name="Logger Before Request" doc:id="71d5732e-e500-4821-b3ed-926cbcdea9f7" config-ref="json-logger-config" message="#[vars.logMessage.message]" tracePoint="BEFORE_REQUEST" priority='#["${json.logger.priority.before-request}"]' category="${json.logger.category.before-request}">
+			<json-logger:content><![CDATA[#[import modules::JSONLoggerModule 
+output application/json
+---
+vars.logMessage.content]]]></json-logger:content>
+		</json-logger:logger>
+		<http:request method="#[vars.request.method]" doc:name="RESTful API" doc:id="f489af4b-4256-4443-acad-07360f998468" config-ref="http-request-config" url="#[vars.request.endpoint]" sendCorrelationId="ALWAYS" correlationId="#[correlationId]" responseTimeout="#[vars.request.timeout.response]">
+			<reconnect frequency="${request.reconnection.frequency}" count="${request.reconnection.attempts}" />
+			<http:headers><![CDATA[#[vars.request.transportHeaders]]]></http:headers>
+			<http:uri-params><![CDATA[#[vars.request.uriParameters]]]></http:uri-params>
+			<http:query-params><![CDATA[#[vars.request.queryParameters]]]></http:query-params>
+		</http:request>
+		<ee:transform doc:name="Update logMessage" doc:id="53cfcd9e-32e0-49c7-93c9-31b3e6d6d05f">
+			<ee:message />
+			<ee:variables>
+				<ee:set-variable variableName="logMessage"><![CDATA[%dw 2.0
+output application/json
+var bsName = "dvt-sys-bookings"
+---
+{
+	message: "AFTER_REQUEST: HTTP Response from $(bsName)",
+	content: {
+		attributes: message.attributes,
+		payload: message.payload
+	}
+}]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<json-logger:logger doc:name="Logger After Request" doc:id="559e911a-92d4-49fa-a4ee-1417e12034df" config-ref="json-logger-config" message="#[vars.logMessage.message]" tracePoint="AFTER_REQUEST" priority='#["${json.logger.priority.after-request}"]' category="${json.logger.category.after-request}">
+			<json-logger:content><![CDATA[#[import modules::JSONLoggerModule 
+output application/json
+---
+vars.logMessage.content]]]></json-logger:content>
+		</json-logger:logger>
+	</sub-flow>
+	<sub-flow name="get-availability-sub-flow" doc:id="bbbb1f0a-8b96-4afe-b18e-aef34ac425ed" >
+		<ee:transform doc:name="availability" doc:id="23698ea1-5281-43b1-a1c1-036c141284ac" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="availability" ><![CDATA[%dw 2.0
+output application/java
+---
+[] as Array]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<foreach doc:name="For Each Day Check Availability" doc:id="e5247937-66e6-4b1c-a75a-b585c9ce7696" collection="#[vars.inPayload.dates]">
+			<ee:transform doc:name="set variables" doc:id="a9c2412b-36be-4369-b28d-e3ec84094e48" >
+				<ee:message >
+				</ee:message>
+				<ee:variables >
+					<ee:set-variable variableName="date" ><![CDATA[payload as Date]]></ee:set-variable>
+					<ee:set-variable variableName="locationId" ><![CDATA[vars.employee.workLocation]]></ee:set-variable>
+				</ee:variables>
+			</ee:transform>
+			<try doc:name="Try" doc:id="11e0f8b0-1789-4fa6-950e-fc479845c287" >
+				<ee:transform doc:name="Build Request" doc:id="99a59a5a-3190-494e-a825-bbd9f2660cc6">
+			<ee:message>
+			</ee:message>
+			<ee:variables>
+				<ee:set-variable variableName="request"><![CDATA[%dw 2.0
+output application/java
+var protocol = lower(p('dvt-sys-bookings.protocol'))
+var host = p('dvt-sys-bookings.host')
+var port = p('dvt-sys-bookings.port')
+var path = "availability"
+---
+{
+	protocol: protocol,
+	method: "GET",
+	endpoint: "$(protocol)://$(host):$(port)/$(path)",
+	transportHeaders: {
+		client_id: p('secure::dvt-sys-bookings.header.client_id'),
+		client_secret: p('secure::dvt-sys-bookings.header.client_secret')
+	},
+	uriParameters: {},
+	queryParameters: {
+		date: vars.date,
+		locationId: vars.locationId
+	}
+}]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<ee:transform doc:name="Update logMessage" doc:id="ff6bab51-f04c-4f9e-acb1-f6fe8722b1d7">
+			<ee:message />
+			<ee:variables>
+				<ee:set-variable variableName="logMessage"><![CDATA[%dw 2.0
+output application/json
+var bsName = "dvt-sys-bookings"
+---
+{
+	message: "BEFORE_REQUEST: HTTP Request to $(bsName)",
+	content: {
+		method: vars.request.method,
+		endpoint: vars.request.endpoint,
+		transportHeaders: vars.request.transportHeaders,
+		uriParameters: vars.request.uriParameters,
+		queryParameters: vars.request.queryParameters,
+		payload: message.payload
+	}
+}]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<json-logger:logger doc:name="Logger Before Request" doc:id="3c73ebbf-ea8d-4be0-889d-409d9b3af363" config-ref="json-logger-config" message="#[vars.logMessage.message]" tracePoint="BEFORE_REQUEST" priority='#["${json.logger.priority.before-request}"]' category="${json.logger.category.before-request}">
+			<json-logger:content><![CDATA[#[import modules::JSONLoggerModule 
+output application/json
+---
+vars.logMessage.content]]]></json-logger:content>
+		</json-logger:logger>
+		<http:request method="#[vars.request.method]" doc:name="RESTful API" doc:id="3db34c33-7bfd-41fa-b82e-08d22583d680" config-ref="http-request-config" url="#[vars.request.endpoint]" sendCorrelationId="ALWAYS" correlationId="#[correlationId]" responseTimeout="#[vars.request.timeout.response]">
+			<reconnect frequency="${request.reconnection.frequency}" count="${request.reconnection.attempts}" />
+			<http:headers><![CDATA[#[vars.request.transportHeaders]]]></http:headers>
+			<http:uri-params><![CDATA[#[vars.request.uriParameters]]]></http:uri-params>
+			<http:query-params><![CDATA[#[vars.request.queryParameters]]]></http:query-params>
+		</http:request>
+		<ee:transform doc:name="Update logMessage" doc:id="9f0a62ce-e162-401b-a791-803042612dba">
+			<ee:message />
+			<ee:variables>
+				<ee:set-variable variableName="logMessage"><![CDATA[%dw 2.0
+output application/json
+var bsName = "dvt-sys-bookings"
+---
+{
+	message: "AFTER_REQUEST: HTTP Response from $(bsName)",
+	content: {
+		attributes: message.attributes,
+		payload: message.payload
+	}
+}]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<json-logger:logger doc:name="Logger After Request" doc:id="047c9749-17f8-4b1c-90d2-96263e34b951" config-ref="json-logger-config" message="#[vars.logMessage.message]" tracePoint="AFTER_REQUEST" priority='#["${json.logger.priority.after-request}"]' category="${json.logger.category.after-request}">
+			<json-logger:content><![CDATA[#[import modules::JSONLoggerModule 
+output application/json
+---
+vars.logMessage.content]]]></json-logger:content>
+		</json-logger:logger>
+				<ee:transform doc:name="Transform Message" doc:id="cf87dae0-ea13-4a9c-b892-fa9b3aa10a63" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+var totalAvailableDesks = payload.totalAvailableDesks
+var currentAvailableDesks = payload.currentAvailableDesks
+---
+{
+	id: payload.id,
+	date: vars.date,
+	totalAvailableDesks: totalAvailableDesks,
+  	currentAvailableDesks: currentAvailableDesks,
+	availableDesk: if ((totalAvailableDesks-currentAvailableDesks)>0) "Yes" else "No"
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<error-handler >
+					<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="3f653780-ba12-4aec-82f5-f7d05f920d40" type="HTTP:NOT_FOUND">
+						<ee:transform doc:name="Transform Message" doc:id="188f2b4b-57d1-4736-b536-4ce27248e56f" >
+							<ee:message >
+								<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	id: payload.id,
+	date: vars.date,
+	totalAvailableDesks: payload.totalAvailableDesks,
+  	currentAvailableDesks: payload.currentAvailableDesks,
+	availableDesk: "No"
+}]]></ee:set-payload>
+							</ee:message>
+						</ee:transform>
+					</on-error-continue>
+				</error-handler>
+			</try>
+			<ee:transform doc:name="availability" doc:id="9f545957-88b5-4d63-a534-f72ce7be4881">
+					<ee:message>
+					</ee:message>
+					<ee:variables>
+						<ee:set-variable variableName="availability"><![CDATA[%dw 2.0
+output application/json
+---
+flatten(vars.*availability ++ [payload])]]></ee:set-variable>
+					</ee:variables>
+				</ee:transform>
+		</foreach>
+	</sub-flow>
+	<sub-flow name="post-available-intentions-sub-flow" doc:id="5d0bb345-eb05-49ab-a439-d67636f9e4ad" >
+		<ee:transform doc:name="Filter Availability Results" doc:id="f62dd263-4fad-496e-a116-245e380e11ca" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+vars.availability filter $.availableDesk == "Yes"]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<foreach doc:name="For Each" doc:id="26f754ae-45e5-4c40-b3f3-fe4ed305b2cf" collection="#[payload]">
+			<ee:transform doc:name="Build Request" doc:id="74d592d3-c7ad-4f6c-8a4a-0dc9fb0ccd31">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+	employeeId: vars.employee.id,
+	date: payload.date,
+	status: "NEW",
+	insertDateTime: now() as DateTime {format: "yyyy-MM-dd'T'HH:mm:ss"}
+}]]></ee:set-payload>
+			</ee:message>
+			<ee:variables>
+				<ee:set-variable variableName="request"><![CDATA[%dw 2.0
+output application/java
+var protocol = lower(p('dvt-sys-bookings.protocol'))
+var host = p('dvt-sys-bookings.host')
+var port = p('dvt-sys-bookings.port')
+var path = "intentions"
+---
+{
+	protocol: protocol,
+	method: "POST",
+	endpoint: "$(protocol)://$(host):$(port)/$(path)",
+	transportHeaders: {
+		client_id: p('secure::dvt-sys-bookings.header.client_id'),
+		client_secret: p('secure::dvt-sys-bookings.header.client_secret')
+	},
+	uriParameters: {},
+	queryParameters: {}
+}]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+			<ee:transform doc:name="Update logMessage" doc:id="6431ce8b-72a0-4d9f-8df8-51352799b46c">
+			<ee:message />
+			<ee:variables>
+				<ee:set-variable variableName="logMessage"><![CDATA[%dw 2.0
+output application/json
+var bsName = "dvt-sys-bookings"
+---
+{
+	message: "BEFORE_REQUEST: HTTP Request to $(bsName)",
+	content: {
+		method: vars.request.method,
+		endpoint: vars.request.endpoint,
+		transportHeaders: vars.request.transportHeaders,
+		uriParameters: vars.request.uriParameters,
+		queryParameters: vars.request.queryParameters,
+		payload: message.payload
+	}
+}]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+			<json-logger:logger doc:name="Logger Before Request" doc:id="801276a8-057c-4665-b5bf-cad606d4c13d" config-ref="json-logger-config" message="#[vars.logMessage.message]" tracePoint="BEFORE_REQUEST" priority='#["${json.logger.priority.before-request}"]' category="${json.logger.category.before-request}">
+			<json-logger:content><![CDATA[#[import modules::JSONLoggerModule 
+output application/json
+---
+vars.logMessage.content]]]></json-logger:content>
+		</json-logger:logger>
+			<http:request method="#[vars.request.method]" doc:name="RESTful API" doc:id="71d1a884-177e-46bc-845f-71682e95df51" config-ref="http-request-config" url="#[vars.request.endpoint]" sendCorrelationId="ALWAYS" correlationId="#[correlationId]" responseTimeout="#[vars.request.timeout.response]">
+			<reconnect frequency="${request.reconnection.frequency}" count="${request.reconnection.attempts}" />
+			<http:headers><![CDATA[#[vars.request.transportHeaders]]]></http:headers>
+			<http:uri-params><![CDATA[#[vars.request.uriParameters]]]></http:uri-params>
+			<http:query-params><![CDATA[#[vars.request.queryParameters]]]></http:query-params>
+		</http:request>
+			<ee:transform doc:name="Update logMessage" doc:id="4548602e-6f8c-4100-8f07-94b1bce1c553">
+			<ee:message />
+			<ee:variables>
+				<ee:set-variable variableName="logMessage"><![CDATA[%dw 2.0
+output application/json
+var bsName = "dvt-sys-bookings"
+---
+{
+	message: "AFTER_REQUEST: HTTP Response from $(bsName)",
+	content: {
+		attributes: message.attributes,
+		payload: message.payload
+	}
+}]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+			<json-logger:logger doc:name="Logger After Request" doc:id="e2718fc0-d16d-42b1-b52f-3161aabec730" config-ref="json-logger-config" message="#[vars.logMessage.message]" tracePoint="AFTER_REQUEST" priority='#["${json.logger.priority.after-request}"]' category="${json.logger.category.after-request}">
+			<json-logger:content><![CDATA[#[import modules::JSONLoggerModule 
+output application/json
+---
+vars.logMessage.content]]]></json-logger:content>
+		</json-logger:logger>
+		</foreach>
+	</sub-flow>
+	<sub-flow name="update-availability-sub-flow" doc:id="489f3963-1340-43fe-861d-b7bdb974eef0" >
+		<ee:transform doc:name="Filter Availability Results" doc:id="cb27ba3c-59cf-4158-851c-2ad1d9618c7b">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+vars.availability filter $.availableDesk == "Yes"]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<foreach doc:name="For Each" doc:id="489fed5a-9f66-439e-ae35-16d1cc734c25" collection="#[payload]">
+			<ee:transform doc:name="Build Request" doc:id="8b74e826-3a4c-42d4-bef0-20228c515de0">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+	currentAvailableDesks: payload.currentAvailableDesks as Number - 1
+}]]></ee:set-payload>
+			</ee:message>
+			<ee:variables>
+				<ee:set-variable variableName="request"><![CDATA[%dw 2.0
+output application/java
+var protocol = lower(p('dvt-sys-bookings.protocol'))
+var host = p('dvt-sys-bookings.host')
+var port = p('dvt-sys-bookings.port')
+var path = "availability/{id}"
+---
+{
+	protocol: protocol,
+	method: "PATCH",
+	endpoint: "$(protocol)://$(host):$(port)/$(path)",
+	transportHeaders: {
+		client_id: p('secure::dvt-sys-bookings.header.client_id'),
+		client_secret: p('secure::dvt-sys-bookings.header.client_secret')
+	},
+	uriParameters: {
+		id: payload.id
+	},
+	queryParameters: {}
+}]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+			<ee:transform doc:name="Update logMessage" doc:id="c1e4f643-6b52-4473-90b4-9827ae60629a">
+			<ee:message />
+			<ee:variables>
+				<ee:set-variable variableName="logMessage"><![CDATA[%dw 2.0
+output application/json
+var bsName = "dvt-sys-bookings"
+---
+{
+	message: "BEFORE_REQUEST: HTTP Request to $(bsName)",
+	content: {
+		method: vars.request.method,
+		endpoint: vars.request.endpoint,
+		transportHeaders: vars.request.transportHeaders,
+		uriParameters: vars.request.uriParameters,
+		queryParameters: vars.request.queryParameters,
+		payload: message.payload
+	}
+}]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+			<json-logger:logger doc:name="Logger Before Request" doc:id="3f1c473f-f184-43ee-a4fb-ebf8d76b8a0f" config-ref="json-logger-config" message="#[vars.logMessage.message]" tracePoint="BEFORE_REQUEST" priority='#["${json.logger.priority.before-request}"]' category="${json.logger.category.before-request}">
+			<json-logger:content><![CDATA[#[import modules::JSONLoggerModule 
+output application/json
+---
+vars.logMessage.content]]]></json-logger:content>
+		</json-logger:logger>
+			<http:request method="#[vars.request.method]" doc:name="RESTful API" doc:id="0cf2f007-627e-4f1c-a9ff-f99bcbd02254" config-ref="http-request-config" url="#[vars.request.endpoint]" sendCorrelationId="ALWAYS" correlationId="#[correlationId]" responseTimeout="#[vars.request.timeout.response]">
+			<reconnect frequency="${request.reconnection.frequency}" count="${request.reconnection.attempts}" />
+			<http:headers><![CDATA[#[vars.request.transportHeaders]]]></http:headers>
+			<http:uri-params><![CDATA[#[vars.request.uriParameters]]]></http:uri-params>
+			<http:query-params><![CDATA[#[vars.request.queryParameters]]]></http:query-params>
+		</http:request>
+			<ee:transform doc:name="Update logMessage" doc:id="494ed58b-49f5-4e37-bbf0-11cfcc5aa4dc">
+			<ee:message />
+			<ee:variables>
+				<ee:set-variable variableName="logMessage"><![CDATA[%dw 2.0
+output application/json
+var bsName = "dvt-sys-bookings"
+---
+{
+	message: "AFTER_REQUEST: HTTP Response from $(bsName)",
+	content: {
+		attributes: message.attributes,
+		payload: message.payload
+	}
+}]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+			<json-logger:logger doc:name="Logger After Request" doc:id="5be3a274-da91-4eb8-b9d7-850791e6cfae" config-ref="json-logger-config" message="#[vars.logMessage.message]" tracePoint="AFTER_REQUEST" priority='#["${json.logger.priority.after-request}"]' category="${json.logger.category.after-request}">
+			<json-logger:content><![CDATA[#[import modules::JSONLoggerModule 
+output application/json
+---
+vars.logMessage.content]]]></json-logger:content>
+		</json-logger:logger>
+		</foreach>
+	</sub-flow>
+</mule>

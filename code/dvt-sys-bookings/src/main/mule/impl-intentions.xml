@@ -1,0 +1,206 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:json-logger="http://www.mulesoft.org/schema/mule/json-logger" xmlns:db="http://www.mulesoft.org/schema/mule/db"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/json-logger http://www.mulesoft.org/schema/mule/json-logger/current/mule-json-logger.xsd">
+	
+	<flow name="get-intentions-main-flow" doc:id="4b15d1c6-02f7-45ee-92af-bc86ac2577cd" >
+		<ee:transform doc:name="Update logMessage" doc:id="bdfcfb7d-623b-48ac-9825-dda24deeb036">
+			<ee:message />
+			<ee:variables>
+				<ee:set-variable variableName="logMessage"><![CDATA[%dw 2.0
+output application/java
+---
+{
+	message: "FLOW: get-intentions",
+	content: "Retrieving Intentions for $(vars.date)."
+}]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<json-logger:logger doc:name="Logger Flow" doc:id="f1690ab8-389c-4fec-823a-9d2884fe26ca" config-ref="json-logger-config" message="#[vars.logMessage.message]" tracePoint="FLOW" priority='#["${json.logger.priority.flow}"]' category="${json.logger.category.flow}">
+			<json-logger:content><![CDATA[#[vars.logMessage.content]]]></json-logger:content>
+		</json-logger:logger>
+		<ee:transform doc:name="Transform Message" doc:id="5769cace-ef49-4343-8008-8daf425ccbf3" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="select_query" ><![CDATA[%dw 2.0
+output application/json
+---
+if (vars.employeeId != null)
+	"SELECT * from intentions where date=:date and employee_id=:employee_id;"
+else
+	"SELECT * from intentions where date=:date;"]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<db:select doc:name="Select from intentions" doc:id="0a05fbfc-f1f4-4bd0-8789-fa564a79cb28" config-ref="database-config">
+			<db:sql><![CDATA[#[vars.select_query]]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{date: vars.date, employee_id: vars.employeeId}]]]></db:input-parameters>
+		</db:select>
+		<choice doc:name="Choice" doc:id="30e7e784-2fed-4b51-9aea-43011885b3d0" >
+			<when expression="#[sizeOf(payload)&gt;0]">
+				<ee:transform doc:name="Transform Message" doc:id="349c79e1-0ca1-4019-8228-cca150a74711">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+payload map (intention,index) -> {
+	id: intention.intention_id,
+	employeeId : intention.employee_id,
+    date: (intention.date as Date {format: "yyyy-MM-dd'T'HH:MM:SSZ"}) as String {format: "yyyy-MM-dd"},
+    status: intention.status,
+    insertDateTime: intention.insert_date_time,
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+				<ee:transform doc:name="Update logMessage" doc:id="860c6449-8683-402d-a188-c451986c379b">
+			<ee:message />
+			<ee:variables>
+				<ee:set-variable variableName="logMessage"><![CDATA[%dw 2.0
+output application/java
+---
+{
+	message: "FLOW: get-intentions",
+	content: "Retrieved Intentions for $(vars.date)."
+}]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+			</when>
+			<otherwise >
+				<ee:transform doc:name="Transform Message" doc:id="3880b0e0-ce9f-46cf-987d-4fc88869c9ca">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+	errorCode: "NOT_FOUND",
+	errorMessage: "Intentions for $(vars.date) not found."
+}]]></ee:set-payload>
+					</ee:message>
+					<ee:variables >
+						<ee:set-variable variableName="httpStatus" ><![CDATA[404]]></ee:set-variable>
+					</ee:variables>
+				</ee:transform>
+				<ee:transform doc:name="Update logMessage" doc:id="e3fa0772-c5f2-4c18-8a55-25a3a1d0385b" >
+					<ee:message />
+					<ee:variables >
+						<ee:set-variable variableName="logMessage" ><![CDATA[%dw 2.0
+output application/java
+---
+{
+	message: "FLOW: get-intentions",
+	content: "Intentions for $(vars.date) not found."
+}]]></ee:set-variable>
+					</ee:variables>
+				</ee:transform>
+			</otherwise>
+		</choice>
+		<json-logger:logger doc:name="Logger Flow" doc:id="76c65342-8897-49e7-8491-870a25ea6ded" config-ref="json-logger-config" message="#[vars.logMessage.message]" tracePoint="FLOW" priority='#["${json.logger.priority.flow}"]' category="${json.logger.category.flow}" >
+			<json-logger:content ><![CDATA[#[vars.logMessage.content]]]></json-logger:content>
+		</json-logger:logger>
+	</flow>
+	
+	<flow name="update-intentions-main-flow" doc:id="f34ffacf-6abe-459f-a903-04f25e6e0b36" >
+		<ee:transform doc:name="Update logMessage" doc:id="dff42010-6bf0-4506-aa24-dd475e3636e8">
+			<ee:message />
+			<ee:variables>
+				<ee:set-variable variableName="logMessage"><![CDATA[%dw 2.0
+output application/java
+---
+{
+	message: "FLOW: update-intentions",
+	content: "Inserting intention to DB."
+}]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<json-logger:logger doc:name="Logger Flow" doc:id="6391688d-07d8-4e9b-a23f-f154de30b66a" config-ref="json-logger-config" message="#[vars.logMessage.message]" tracePoint="FLOW" priority='#["${json.logger.priority.flow}"]' category="${json.logger.category.flow}">
+			<json-logger:content><![CDATA[#[vars.logMessage.content]]]></json-logger:content>
+		</json-logger:logger>
+		<db:insert doc:name="Insert into intentions" doc:id="9c331ec0-a94c-4e4b-b683-3e0dd096bb88" config-ref="database-config">
+			<db:sql><![CDATA[INSERT INTO `intentions` (`employee_id`,`date`,`status`) 
+VALUES (:employee_id, :date, :status);]]></db:sql>
+			<db:input-parameters><![CDATA[#[{employee_id:payload.employeeId, date:payload.date, status:payload.status}]]]></db:input-parameters>
+		</db:insert>
+		<ee:transform doc:name="Transform Message" doc:id="bad6822a-6c26-4848-b8bd-cef3991236b6">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+	code: "CREATED",
+	message: "Resource Created"
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<ee:transform doc:name="Update logMessage" doc:id="9ea7fb20-0763-4ffb-bfec-bccb70b8235c">
+			<ee:message />
+			<ee:variables>
+				<ee:set-variable variableName="logMessage"><![CDATA[%dw 2.0
+output application/java
+---
+{
+	message: "FLOW: update-intentions",
+	content: "Intention inserted to DB."
+}]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<json-logger:logger doc:name="Logger Flow" doc:id="2398285d-12d3-4735-8bf6-1e0c64b15447" config-ref="json-logger-config" message="#[vars.logMessage.message]" tracePoint="FLOW" priority='#["${json.logger.priority.flow}"]' category="${json.logger.category.flow}" >
+			<json-logger:content ><![CDATA[#[vars.logMessage.content]]]></json-logger:content>
+		</json-logger:logger>
+	</flow>
+	
+	<flow name="update-intentions-by-id-main-flow" doc:id="6d866b23-584c-4b62-a005-b7ed7b09c221" >
+		<ee:transform doc:name="Update logMessage" doc:id="e6b30d62-71cf-4ce9-8e94-e7313067f0f7">
+			<ee:message />
+			<ee:variables>
+				<ee:set-variable variableName="logMessage"><![CDATA[%dw 2.0
+output application/java
+---
+{
+	message: "FLOW: update-intentions-by-id",
+	content: "Update Intention $(vars.intentionId) in the DB."
+}]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<json-logger:logger doc:name="Logger Flow" doc:id="5a07081f-6108-41fd-9230-50f08f6daf5c" config-ref="json-logger-config" message="#[vars.logMessage.message]" tracePoint="FLOW" priority='#["${json.logger.priority.flow}"]' category="${json.logger.category.flow}">
+			<json-logger:content><![CDATA[#[vars.logMessage.content]]]></json-logger:content>
+		</json-logger:logger>
+		<db:update doc:name="Update intentions" doc:id="25973407-5f0e-4a6a-94d2-5a04f5cff03e" config-ref="database-config">
+			<db:sql><![CDATA[UPDATE `intentions` SET status=:status WHERE intention_id=:intention_id]]></db:sql>
+			<db:input-parameters><![CDATA[#[{status:payload.status, intention_id:vars.intentionId}]]]></db:input-parameters>
+		</db:update>
+		<ee:transform doc:name="Transform Message" doc:id="d51a196d-4091-4d28-8dea-5f57a98426cd">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+	code: "SUCCESS",
+	message: "Resource Updated"
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<ee:transform doc:name="Update logMessage" doc:id="3fc8ff17-de3d-4a90-99b9-45b7bd4b76ea">
+			<ee:message />
+			<ee:variables>
+				<ee:set-variable variableName="logMessage"><![CDATA[%dw 2.0
+output application/java
+---
+{
+	message: "FLOW: update-intentions-by-id",
+	content: "Intention $(vars.intentionId) updated in the DB."
+}]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<json-logger:logger doc:name="Logger Flow" doc:id="68e87400-ea28-438f-bdce-7bee9f644ef7" config-ref="json-logger-config" message="#[vars.logMessage.message]" tracePoint="FLOW" priority='#["${json.logger.priority.flow}"]' category="${json.logger.category.flow}" >
+			<json-logger:content ><![CDATA[#[vars.logMessage.content]]]></json-logger:content>
+		</json-logger:logger>
+	</flow>
+</mule>

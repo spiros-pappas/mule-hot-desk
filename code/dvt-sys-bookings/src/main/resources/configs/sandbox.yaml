@@ -1,0 +1,21 @@
+# Configuration file for the Sandbox environment
+config.env.filename: "configs.sandbox.yaml"
+
+# Autodiscovery Id
+autodiscovery.id: "17340507"
+
+# Overwrite JSON Logger config
+json:
+  logger:
+    priority:
+      exception: "INFO"
+      before-request: "INFO"
+      after-request: "INFO"
+
+# MySQL Config
+mysqldb:
+  host: "sql4.freemysqlhosting.net"
+  port: "3306"
+  username: "sql4441960"
+  password: "![ar4QpFzGYLkCV9H9LthgSw==]"
+  dbname: "sql4441960"

@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd" xmlns="http://maven.apache.org/POM/4.0.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>813cde1d-689b-4689-91c2-c9f408772769</groupId>
+  <artifactId>dvt-sys-employees</artifactId>
+  <version>1.0.1</version>
+  <name>dvt-sys-employees</name>
+  <description></description>
+  <dependencies>
+    <dependency>
+      <groupId>813cde1d-689b-4689-91c2-c9f408772769</groupId>
+      <artifactId>default-error-responses-trait</artifactId>
+      <version>1.0.0</version>
+      <type>zip</type>
+      <classifier>raml-fragment</classifier>
+    </dependency>
+    <dependency>
+      <groupId>813cde1d-689b-4689-91c2-c9f408772769</groupId>
+      <artifactId>client-id-enforcement-trait</artifactId>
+      <version>1.0.0</version>
+      <type>zip</type>
+      <classifier>raml-fragment</classifier>
+    </dependency>
+    <dependency>
+      <groupId>813cde1d-689b-4689-91c2-c9f408772769</groupId>
+      <artifactId>hr-team-datatype</artifactId>
+      <version>1.0.0</version>
+      <type>zip</type>
+      <classifier>raml-fragment</classifier>
+    </dependency>
+    <dependency>
+      <groupId>813cde1d-689b-4689-91c2-c9f408772769</groupId>
+      <artifactId>hr-employment-datatype</artifactId>
+      <version>1.0.0</version>
+      <type>zip</type>
+      <classifier>raml-fragment</classifier>
+    </dependency>
+    <dependency>
+      <groupId>813cde1d-689b-4689-91c2-c9f408772769</groupId>
+      <artifactId>hr-employee-datatype</artifactId>
+      <version>1.0.1</version>
+      <type>zip</type>
+      <classifier>raml-fragment</classifier>
+    </dependency>
+  </dependencies>
+  <repositories>
+    <repository>
+      <id>anypoint-exchange</id>
+      <name>Anypoint Exchange</name>
+      <url>https://maven.anypoint.mulesoft.com/api/v2/maven</url>
+    </repository>
+  </repositories>
+</project>

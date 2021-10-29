@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns:vm="http://www.mulesoft.org/schema/mule/vm"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:json-logger="http://www.mulesoft.org/schema/mule/json-logger" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd 
+http://www.mulesoft.org/schema/mule/json-logger http://www.mulesoft.org/schema/mule/json-logger/current/mule-json-logger.xsd
+http://www.mulesoft.org/schema/mule/vm http://www.mulesoft.org/schema/mule/vm/current/mule-vm.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+    <apikit:config name="dvt-prc-allocation-config" api="resource::813cde1d-689b-4689-91c2-c9f408772769:dvt-prc-allocation:1.0.0:raml:zip:dvt-prc-allocation.raml" outboundHeadersMapName="outboundHeaders" httpStatusVarName="httpStatus" />
+    <flow name="dvt-prc-allocation-main">
+        <http:listener config-ref="http-listener-config" path="/*">
+            <http:response statusCode="#[vars.httpStatus default 200]">
+                <http:headers><![CDATA[#[vars.outboundHeaders default {}]]]></http:headers>
+            </http:response>
+            <http:error-response statusCode="#[vars.httpStatus default 500]">
+                <http:body><![CDATA[#[payload]]]></http:body>
+                <http:headers><![CDATA[#[vars.outboundHeaders default {}]]]></http:headers>
+            </http:error-response>
+        </http:listener>
+        <json-logger:logger doc:name="Logger Debug" doc:id="a191f271-eff5-40ab-914d-99c6705c0d4d" config-ref="json-logger-config" message="DEBUG: Inbound HTTP Request" priority="DEBUG" category="${json.logger.category.debug}">
+            <json-logger:content><![CDATA[#[import modules::JSONLoggerModule output application/json ---
+{
+    attributes: JSONLoggerModule::stringifyNonJSON(attributes),
+    payload: JSONLoggerModule::stringifyNonJSON(payload) 
+}]]]></json-logger:content>
+        </json-logger:logger>
+        <ee:transform doc:name="Prepare logMessage" doc:id="5d1f5ff4-23c4-4891-b52b-408190030e1c">
+            <ee:message />
+            <ee:variables>
+                <ee:set-variable variableName="logMessage"><![CDATA[%dw 2.0
+output application/json
+---
+{
+	message: "START: Inbound HTTP Request",
+	content: {
+		remoteAddress: message.attributes.remoteAddress,
+		method: message.attributes.method,
+		requestPath: message.attributes.requestPath,
+		headers: {
+			client_id: message.attributes.headers.client_id,
+			client_secret: message.attributes.headers.client_secret
+		},
+		queryParams: message.attributes.queryParams
+	}
+}]]></ee:set-variable>
+            </ee:variables>
+        </ee:transform>
+		<json-logger:logger doc:name="Logger Start" doc:id="20bc1d3f-099c-4c31-841b-0eb84f98a790" config-ref="json-logger-config" message="#[vars.logMessage.message]" priority="#[&quot;${json.logger.priority.start}&quot;]" category="${json.logger.category.start}">
+            <json-logger:content><![CDATA[#[output application/json 
+---
+vars.logMessage.content]]]></json-logger:content>
+        </json-logger:logger>
+        <apikit:router config-ref="dvt-prc-allocation-config" />
+		<ee:transform doc:name="Update logMessage" doc:id="518bd454-9f2b-4829-b30d-0bd4335fe860">
+            <ee:message />
+            <ee:variables>
+                <ee:set-variable variableName="logMessage"><![CDATA[%dw 2.0
+output application/json
+---
+{
+	message: "END: Outbound HTTP Response",
+	content: {
+		httpStatus: vars.httpStatus
+	}
+}]]></ee:set-variable>
+            </ee:variables>
+        </ee:transform>
+		<json-logger:logger doc:name="Logger End" doc:id="d965fbfd-96c5-4c20-a349-3a84b2e75eae" config-ref="json-logger-config" message="#[vars.logMessage.message]" tracePoint="END" priority="#[&quot;${json.logger.priority.end}&quot;]" category="${json.logger.category.end}">
+            <json-logger:content><![CDATA[#[output application/json 
+---
+vars.logMessage.content]]]></json-logger:content>
+        </json-logger:logger>
+        <json-logger:logger doc:name="Logger Debug" doc:id="ea196300-af36-43db-85e9-27dd7fd5f990" config-ref="json-logger-config" message="DEBUG: Inbound HTTP Request" tracePoint="END" priority="DEBUG" category="${json.logger.category.debug}" />
+    </flow>
+    <flow name="dvt-prc-allocation-console">
+        <http:listener config-ref="http-listener-config" path="/console/*">
+            <http:response statusCode="#[vars.httpStatus default 200]">
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:response>
+            <http:error-response statusCode="#[vars.httpStatus default 500]">
+                <http:body>#[payload]</http:body>
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:error-response>
+        </http:listener>
+        <set-variable value="${apikit.console.disabled}" doc:name="apikitConsoleDisabled" doc:id="868249a6-43eb-4150-b363-35bcdd2ebbcc" variableName="apikitConsoleDisabled" />
+		<choice doc:name="Choice" doc:id="5eada332-c4ef-4635-8360-02b0e5eb5882">
+            <when expression="#[vars.apikitConsoleDisabled == &quot;false&quot;]">
+				<apikit:console config-ref="dvt-prc-allocation-config" />
+            </when>
+			<otherwise>
+                <raise-error doc:name="Raise error" doc:id="1be3dbea-5186-42e3-a33e-3728ae08f7e7" type="CONSOLE:NOT_FOUND" description="Console is not available." />
+            </otherwise>
+        </choice>
+    </flow>
+    <flow name="post:\job\desk-allocation:application\json:dvt-prc-allocation-config">
+        <ee:transform xsi:schemaLocation="http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd" doc:name="set variables">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+import * from dw::core::Strings
+output application/json
+---
+{
+	jobId: message.payload.jobId,
+	lastSuccess: message.payload.lastSuccess,
+	requestDate: message.payload.requestDate,
+	callbackURL: message.attributes.queryParams.callbackURL
+}]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+		<vm:publish doc:name="Publish" doc:id="7b8c0723-4c08-4960-86fa-2f44d415d858" config-ref="vm-config" sendCorrelationId="ALWAYS" queueName="desk-allocation-vm-queue"/>
+		<ee:transform doc:name="Response" doc:id="ce268444-b414-4db1-8da1-814c66444ef8" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	code: "SUCCESS",
+	message: "Job triggered successfully"
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+    </flow>
+</mule>

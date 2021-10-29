@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:json-logger="http://www.mulesoft.org/schema/mule/json-logger" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd 
+http://www.mulesoft.org/schema/mule/json-logger http://www.mulesoft.org/schema/mule/json-logger/current/mule-json-logger.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+    <apikit:config name="dvt-util-common-scheduler-config" api="resource::813cde1d-689b-4689-91c2-c9f408772769:dvt-util-common-scheduler:1.0.0:raml:zip:dvt-util-common-scheduler.raml" outboundHeadersMapName="outboundHeaders" httpStatusVarName="httpStatus" />
+    <flow name="dvt-util-common-scheduler-main">
+        <http:listener config-ref="http-listener-config" path="/*">
+            <http:response statusCode="#[vars.httpStatus default 200]">
+                <http:headers><![CDATA[#[vars.outboundHeaders default {}]]]></http:headers>
+            </http:response>
+            <http:error-response statusCode="#[vars.httpStatus default 500]">
+                <http:body><![CDATA[#[payload]]]></http:body>
+                <http:headers><![CDATA[#[vars.outboundHeaders default {}]]]></http:headers>
+            </http:error-response>
+        </http:listener>
+        <json-logger:logger doc:name="Logger Debug" doc:id="57f01c00-394d-403f-8e4d-e5746afd1940" config-ref="json-logger-config" message="DEBUG: Inbound HTTP Request" priority="DEBUG" category="${json.logger.category.debug}" >
+			<json-logger:content ><![CDATA[#[import modules::JSONLoggerModule output application/json ---
+{
+    attributes: JSONLoggerModule::stringifyNonJSON(attributes),
+    payload: JSONLoggerModule::stringifyNonJSON(payload) 
+}]]]></json-logger:content>
+		</json-logger:logger>
+		<ee:transform doc:name="Prepare logMessage" doc:id="ebdc3550-e7a4-4ae9-9158-3f74075e6d34" >
+			<ee:message />
+			<ee:variables >
+				<ee:set-variable variableName="logMessage" ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	message: "START: Inbound HTTP Request",
+	content: {
+		remoteAddress: message.attributes.remoteAddress,
+		method: message.attributes.method,
+		requestPath: message.attributes.requestPath,
+		headers: {
+			client_id: message.attributes.headers.client_id,
+			client_secret: message.attributes.headers.client_secret
+		},
+		queryParams: message.attributes.queryParams
+	}
+}]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<json-logger:logger doc:name="Logger Start" doc:id="eba8e8bc-5eb3-4d7a-9160-ed2f3f05bc05" config-ref="json-logger-config" message="#[vars.logMessage.message]" priority='#["${json.logger.priority.start}"]' category="${json.logger.category.start}" >
+			<json-logger:content ><![CDATA[#[output application/json 
+---
+vars.logMessage.content]]]></json-logger:content>
+		</json-logger:logger>
+		<apikit:router config-ref="dvt-util-common-scheduler-config" />
+		<ee:transform doc:name="Update logMessage" doc:id="d0f42521-0ea8-406c-a4af-d7426c3e97b8" >
+			<ee:message />
+			<ee:variables >
+				<ee:set-variable variableName="logMessage" ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	message: "END: Outbound HTTP Response",
+	content: {
+		httpStatus: vars.httpStatus
+	}
+}]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<json-logger:logger doc:name="Logger End" doc:id="d8025fd6-1d14-4a14-a510-f667aae7a262" config-ref="json-logger-config" message="#[vars.logMessage.message]" tracePoint="END" priority='#["${json.logger.priority.end}"]' category="${json.logger.category.end}" >
+			<json-logger:content ><![CDATA[#[output application/json 
+---
+vars.logMessage.content]]]></json-logger:content>
+		</json-logger:logger>
+		<json-logger:logger doc:name="Logger Debug" doc:id="b5a39a75-d994-4690-8e39-4ed9143cd9bf" config-ref="json-logger-config" message="DEBUG: Inbound HTTP Request" tracePoint="END" priority="DEBUG" category="${json.logger.category.debug}" />
+    </flow>
+    <flow name="dvt-util-common-scheduler-console">
+        <http:listener config-ref="http-listener-config" path="/console/*">
+            <http:response statusCode="#[vars.httpStatus default 200]">
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:response>
+            <http:error-response statusCode="#[vars.httpStatus default 500]">
+                <http:body>#[payload]</http:body>
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:error-response>
+        </http:listener>
+        <set-variable value="${apikit.console.disabled}" doc:name="apikitConsoleDisabled" doc:id="c73d12ce-84c5-4e29-9cc3-daab9d0b743e" variableName="apikitConsoleDisabled" />
+		<choice doc:name="Choice" doc:id="2f78223b-8f88-48e1-b13a-0fa30851f5b2" >
+			<when expression='#[vars.apikitConsoleDisabled == "false"]' >
+				<apikit:console config-ref="dvt-util-common-scheduler-config" />
+			</when>
+			<otherwise >
+				<raise-error doc:name="Raise error" doc:id="ba3e1cc6-8861-45cc-a030-0b3cb6c5f6d4" type="CONSOLE:NOT_FOUND" description="Console is not available." />
+			</otherwise>
+		</choice>
+    </flow>
+    <flow name="patch:\jobs\(jobId):application\json:dvt-util-common-scheduler-config">
+		<flow-ref doc:name="patch-job-main-flow" doc:id="fff0a827-e3bb-4e01-b001-3b2542cd3b31" name="patch-job-main-flow" />
+    </flow>
+    <flow name="get:\jobs:dvt-util-common-scheduler-config">
+		<ee:transform doc:name="Transform Message" doc:id="8f2ca2dd-dfcb-4656-bf5b-fcc49e477245" >
+			<ee:message />
+			<ee:variables >
+				<ee:set-variable variableName="watermarkId" ><![CDATA[%dw 2.0
+output application/java
+---
+message.attributes.queryParams.watermarkId default ""]]></ee:set-variable>
+				<ee:set-variable variableName="startDate" ><![CDATA[%dw 2.0
+output application/java
+---
+message.attributes.queryParams.startDate default ""]]></ee:set-variable>
+				<ee:set-variable variableName="status" ><![CDATA[%dw 2.0
+output application/java
+---
+message.attributes.queryParams.status default ""]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<flow-ref doc:name="get-jobs-main-flow" doc:id="ba367043-dcc9-49f4-bb78-cef9d202f284" name="get-jobs-main-flow" />
+    </flow>
+    <flow name="get:\watermarks:dvt-util-common-scheduler-config">
+		<flow-ref doc:name="get-watermarks-main-flow" doc:id="8f1d0219-d384-4600-b315-3988d22c91e5" name="get-watermarks-main-flow" />
+    </flow>
+    <flow name="get:\jobs\(jobId):dvt-util-common-scheduler-config">
+		<flow-ref doc:name="get-job-by-id-main-flow" doc:id="9d9d505d-e40d-4e45-839c-4d31d854db26" name="get-job-by-id-main-flow" />
+    </flow>
+    <flow name="get:\watermarks\(watermarkId):dvt-util-common-scheduler-config">
+		<flow-ref doc:name="get-watermark-by-id-main-flow" doc:id="ab5f6254-3f11-478f-98b8-cd2762594ee3" name="get-watermark-by-id-main-flow" />
+    </flow>
+</mule>

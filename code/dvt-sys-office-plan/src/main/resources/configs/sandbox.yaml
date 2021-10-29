@@ -1,0 +1,18 @@
+# Configuration file for the Sandbox environment
+config.env.filename: "configs.sandbox.yaml"
+
+# Autodiscovery Id
+autodiscovery.id: "17345857"
+
+# Overwrite JSON Logger config
+json:
+  logger:
+    priority:
+      exception: "INFO"
+      before-request: "INFO"
+      after-request: "INFO"
+
+# MongoDB  
+mongo:
+  username: "![ibZWnVWgyaf3Sh7BCIeAww==]"
+  password: "![rqtsCfW44yWhTDupWZNsTQ==]"
