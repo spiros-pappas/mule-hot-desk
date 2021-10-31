@@ -1,0 +1,4 @@
+For storing office plans we use MongoDB Atlas cloud service. This is an easy way to host and manage data. 
+For this purpose, a new project "Smart Hotdesking" has been created within the organization Devoteam. Also, for this project new cluster is created and deployed with AWS as a provider inside of us-east-1 region. There is no any access limitation for connecting to cluster, so connection is allowed from any IP address.
+
+This project has only one database, hotdesking, and only one user hotdeskUser. The plan is to host office plan of each building inside of buildings collection. 

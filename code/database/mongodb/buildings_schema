@@ -1,0 +1,132 @@
+{
+	"title": "Record of Office Plan",
+	"description": "This document records the details of an office plan",
+	"type": "object",
+	"properties": {
+		"buildingId": {
+			"description": "A unique identifier for an office plan",
+			"type": "object"
+		},
+		"buildingNumber": {
+			"description": "A number of the building",
+			"type": "string"
+		},
+		"facilityType": {
+			"description": "A facility type of the building",
+			"type": "string"
+		},
+		"addrress": {
+			"description": "Addressess of the office",
+			"type": "object",
+			"properties": {
+				"addrressId": {
+					"description": "A unique identifier for an office addrress",
+					"type": "number"
+				},
+				"addressName": {
+					"description": "A street name",
+					"type": "string"
+				},
+				"addressLine1": {
+					"description": "Addressess Line 1",
+					"type": "string"
+				},
+				"addressLine2": {
+					"description": "Addressess Line 2",
+					"type": "string"
+				},
+				"addressLine3": {
+					"description": "Addressess Line 3",
+					"type": "string"
+				},
+				"postalCode": {
+					"description": "Postal code",
+					"type": "string"
+				},
+				"city": {
+					"description": "A city name",
+					"type": "string"
+				}
+			}
+		},
+		"rooms": {
+			"type": "array",
+			"items": {
+				"description": "List of the rooms",
+				"type": "object",
+				"properties": {
+					"roomId": {
+						"description": "A unique identifier for a room",
+						"type": "string"
+					},
+					"roomName": {
+						"description": "Name of te room",
+						"type": "string"
+					},
+					"roomType": {
+						"description": "Type of the room",
+						"type": "string"
+					},
+					"roomDescription": {
+						"description": "Description of the room",
+						"type": "string"
+					},
+					"floor": {
+						"description": "Floor number",
+						"type": "object"
+					},
+					"equipment": {
+						"type": "array",
+						"items": {
+							"description": "List of the equipment",
+							"type": "object",
+							"properties" : {
+								"equipmentId": {
+									"description": "A unique identifier for  an equipment",
+									"type": "string"
+								},
+								"equipmentName": {
+									"description": "Name of th equipment",
+									"type": "string"
+								},
+								"equipmentType": {
+									"description": "type of the equipment",
+									"type": "string"
+								},
+								"equipmentDescription": {
+									"description": "Description of the equipment",
+									"type": "string"
+								}
+							}
+						}
+					},
+					"desks": {
+						"type": "array",
+						"items": {
+							"description": "List of the desks",
+							"type": "object",
+							"properties": {
+								"deskId":{
+									"description": "A unique identifier of a desk",
+									"type": "string"
+								},
+								"deskName":{
+									"description": "Name of the desk",
+									"type": "string"
+								},
+								"deskType":{
+									"description": "Type of the desk",
+									"type": "string"
+								},
+								"deskDescription":{
+									"description": "Description of the desk",
+									"type": "string"
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+}

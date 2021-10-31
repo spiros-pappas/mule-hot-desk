@@ -50,3 +50,33 @@ CREATE TABLE `employments` (
   KEY `employee_id_idx` (`employee_id`),
   CONSTRAINT `employee_id` FOREIGN KEY (`employee_id`) REFERENCES `employees` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE `bookings` (
+  `booking_id` int(11) NOT NULL AUTO_INCREMENT,
+  `date` date NOT NULL,
+  `desk_id` int(11) NOT NULL,
+  `employee_id` int(11) NOT NULL,
+  PRIMARY KEY (`booking_id`),
+  UNIQUE KEY `booking_id_UNIQUE` (`booking_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=32 DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE `availability` (
+  `availability_id` int(11) NOT NULL AUTO_INCREMENT,
+  `date` date NOT NULL,
+  `location_id` int(11) NOT NULL,
+  `total_available_desks` int(11) NOT NULL,
+  `current_available_desks` int(11) NOT NULL,
+  `room_id` varchar(45) NOT NULL,
+  PRIMARY KEY (`availability_id`),
+  UNIQUE KEY `availability_id_UNIQUE` (`availability_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=22 DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE `intentions` (
+  `intention_id` int(11) NOT NULL AUTO_INCREMENT,
+  `employee_id` int(11) NOT NULL,
+  `date` date NOT NULL,
+  `status` varchar(45) NOT NULL,
+  `insert_date_time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`intention_id`),
+  UNIQUE KEY `intention_id_UNIQUE` (`intention_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=36 DEFAULT CHARSET=utf8mb4;

@@ -1,0 +1,9 @@
+[{"id":1, "name":"General Management", "parent_team":0},
+ {"id":2, "name":"Marketing", "parent_team":1},
+ {"id":3, "name":"Operations", "parent_team":1},
+ {"id":4, "name":"Finance", "parent_team":1},
+ {"id":5, "name":"Sales", "parent_team":1},
+ {"id":6, "name":"Human Resource", "parent_team":1},
+ {"id":7, "name":"Delivery", "parent_team":1},
+ {"id":8, "name":"DevOps", "parent_team":1},
+ {"id":9, "name":"Engineering", "parent_team":1}]
